@@ -1,0 +1,33 @@
+.app-viewport {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-canvas);
+  display: flex;
+}
+
+.left-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.right-sidebar-fixed {
+  width: 20%;
+  min-width: 340px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-basis: 20%;
+}
+
+.right-sidebar-fixed.is-all-hidden {
+  width: 0;
+  min-width: 0;
+  flex-basis: 0;
+  overflow: hidden;
+}

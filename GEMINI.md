@@ -1,0 +1,61 @@
+# 🤖 GEMINI.md - 本地 AI 执行端最高宪法 (The AI Constitution)
+**适用对象**: 本地所有 AI Coding Agent 
+**执行优先级**: 最高 (Override All)。本文件是项目的唯一真理源，包含技术栈规范、目录结构、编码准则和 API 规范。AI 在生成任何代码前，必须优先读取并绝对服从本文件。
+
+---
+
+## 零、 绝对红线 (The Absolute Red Lines) 🚨
+1. **环境与路径隔离**: 必须且只能使用 Linux 绝对路径或以 `~/` 开头的相对路径。严禁在代码、配置文件或终端操作中生成任何 Windows 风格的反斜杠路径 (`C:\...`) 或 WSL 跨界挂载路径 (`/mnt/c/...`)。
+2. **零猜测铁律 (Zero Speculation)**: 严禁臆测任何未确定的环境参数、API 字段、版本号、文件路径或业务意图。遇到模糊点，必须立刻停止执行并向用户提问：“请确认 [具体参数/意图]”。宁可多问，不可错做。
+3. **破坏性操作熔断 (Destructive Operations)**: 在执行核心文件的全盘覆盖、大规模重构或删除操作前，必须先简述方案，并等待用户回复“确认执行”后方可继续。
+4. **全中文回复**: 无论用户的 Prompt 语言为何，代码解释、架构分析、日常交互强制使用中文（简体）。
+5. **JSON 纯净原则**: 🛑 极其重要：标准的 `.json` 文件内严禁包含任何形式的注释 (`//` 或 `/* */`)，否则将导致解析崩溃！如必须写注释，请修改为 `.ts`/`.py` 配置或使用 `.jsonc`。
+
+---
+
+## 壹、 核心编码与生成规范 (Code Generation Protocol)
+
+### 1. 增量与精准开发 (Incremental & Targeted)
+* **禁止盲目覆盖**: 生成代码前必须先读取现有文件，识别缺失模块，**仅针对该模块生成代码**。
+* **路径收束**: 用户的启动指令将明确传递目标文件路径（如 `aider-dmx src/api.ts`），请将注意力严格收束在该目标内，防止对其他文件造成附带损害 (Collateral Damage)。
+
+### 2. 代码质量与类型安全 (Quality & Type Hinting)
+* **强类型约束**: 所有新增的 TypeScript/JavaScript 代码必须具备严谨的 Type Hinting (接口、类型别名、泛型)。
+* **中文注释**: 核心业务逻辑、状态流转、复杂算法和公共组件的 Props，必须且只能使用**中文注释**。
+* **版本策略**: 严禁硬编码旧版依赖号，始终默认使用当前时间点最新的稳定版 (Stable) 或 SOTA 模型/工具。若项目已存在 `package.json`，必须先读取以保持版本一致性。
+
+### 3. 闭环测试与修复 (Implement and Test Closure)
+* 代码编写完成后，若用户提供了 Traceback 报错日志，AI 必须直接摄入该日志，精准定位并进行自动化修复，直至测试通过。
+
+---
+
+## 贰、 UI/UX 与样式架构规范 (Aesthetic & UI/UX Rules)
+作为顶级前端架构师的执行手，你生成的 UI 代码必须吻合以下美学纪律：
+
+### 1. 变量驱动与微拟态 (Token-Driven & Neumorphism)
+* **禁用纯黑**: 样式体系中彻底封杀纯黑色 (`#000000` / `rgba(0,0,0,X)`) 的投影或边框。
+* **强制变量化**: 背景色、文本色、边框必须调用 `PROJECT.md` 中约定的 CSS Variables (如 `var(--bg-canvas)`, `var(--text-primary)`, `var(--color-info-bg)`)。
+* **Z 轴光影**: 卡片和交互态必须使用微拟态光影（`--shadow-soft`, `--shadow-hover`, `--shadow-inner`）替代死板的 `border`。
+
+### 2. 8pt 绝对网格与排版 (The 8pt Grid Strict Mode)
+* 所有涉及间距 (margin, padding, gap, top/left) 和圆角 (border-radius) 的数值，**必须是 8 的倍数** (8, 16, 24, 32, 40, 48, 64等)。严禁生成 5px、10px、15px 等非标数值。
+* 代码展示区块强制绑定等宽字体集 (`Fira Code`, `JetBrains Mono`, `monospace`) 并挂载专属背景色 `--code-bg`。
+
+---
+
+## 叁、 Git 提交流程与原子化控制 (Git Protocol)
+由于 Aider 被配置为 `--no-auto-commits`（阻断自动提交），你的工作流程如下：
+1. **手动控制权**: 代码修改完毕并经用户本地验证/测试通过后，由用户手动执行 `git add .` 与 commit。
+2. **Commit 规范预设**: 如果用户要求你生成 Commit Message，必须为全中文，并遵循 `<Type>: <Description>` 格式。
+   * 例: `feat: 增加主控台每日计划模块卡片渲染`
+   * 例: `fix: 修复路由切换时 AI 侧边栏状态丢失的问题`
+   * 例: `refactor: 依据 8pt 网格规范重构知识点下钻页`
+
+---
+
+## 肆、 Project Warm-Parchment 专属业务铁律 (Domain Rules)
+1. **在线 IDE 降级防御**: 若遇到涉及“在线编程平台 (IDE)”的开发，必须检查 `ENABLE_ONLINE_IDE` 开关。在开启前，强制将其渲染为 Disabled 状态（扫描线 + Badge + pointer-events: none），或在点击时实施前端事件劫持 (`e.preventDefault()`) 并触发全局 Toast，严禁执行路由跳转。
+2. **AI 侧边栏保活**: 在主控台 (`/dashboard`) 与下钻页 (`/node/:id`) 间切换时，由于其共享 80/20 分栏 Layout，AI Chat 组件严禁被卸载，必须通过顶层状态管理保持对话上下文不中断。
+## 伍、 数据流与接口铁律 (Data Flow & API Protocol)
+1. **用户画像强制耦合**: 在编写任何涉及调用后端 LLM 接口（如生成学习计划、学前测、知识点讲解）的 Service 函数时，AI 必须自动从全局 Store (Zustand) 获取用户画像上下文并合并到 Request Payload 中。
+2. **SSE 流式消费**: 在生成 API 请求代码时，遇到生成类接口，强制使用 Fetch API 处理 Server-Sent Events 流，并暴露出 `onMessage`, `onError`, `onComplete` 等回调函数供 UI 层使用，严禁将其当作普通 Promise 处理。

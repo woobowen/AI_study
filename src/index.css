@@ -1,0 +1,99 @@
+/* ============================================================
+   全局设计令牌 & 宏观布局
+   遵循 8pt 网格 · 微拟态光影 · 零纯黑原则
+   ============================================================ */
+
+/* ---------- 核心调色板 ---------- */
+:root {
+  /* 基础色 */
+  --bg-canvas: #faf6f1;          /* 奶油白底色 */
+  --bg-surface: #ffffff;         /* 卡片/面板表面色 */
+  --bg-sunken: #f0ebe4;          /* 下沉区域背景 */
+  --text-primary: #3e2c1c;       /* 深棕正文色 */
+  --text-secondary: #7a6a5a;     /* 次级文本色 */
+  --text-tertiary: #a89888;      /* 辅助/占位文本色 */
+  --border-default: #e4ddd4;     /* 默认边框色 */
+  --border-strong: #c8bfb4;      /* 强调边框色 */
+
+  /* 5 种语义色 (背景 + 前景) */
+  --color-info-bg: #e8f0fe;
+  --color-info-fg: #1a56db;
+  --color-success-bg: #e6f5ec;
+  --color-success-fg: #1a7f42;
+  --color-warning-bg: #fef4e0;
+  --color-warning-fg: #b45309;
+  --color-error-bg: #fde8e8;
+  --color-error-fg: #c81e1e;
+  --color-accent-bg: #f0e6ff;
+  --color-accent-fg: #6d28d9;
+
+  /* 微拟态光影三件套 — 严禁纯黑 */
+  --shadow-soft:
+    0 2px 8px rgba(62, 44, 28, 0.06),
+    0 1px 2px rgba(62, 44, 28, 0.04);
+  --shadow-hover:
+    0 4px 16px rgba(62, 44, 28, 0.10),
+    0 2px 4px rgba(62, 44, 28, 0.06);
+  --shadow-inner:
+    inset 0 2px 4px rgba(62, 44, 28, 0.06);
+
+  /* 代码区块专属 */
+  --code-bg: #f5f0ea;
+  --code-font: 'Fira Code', 'JetBrains Mono', monospace;
+
+  /* 排版基线 */
+  font-family: system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- 全局 Reset ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- 宏观布局类名 ---------- */
+
+/* 视口容器：锁死 100vw × 100vh，禁止溢出 */
+.app-viewport {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+}
+
+/* 左侧可滚动内容区 */
+.left-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 48px 5% 120px 5%;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* 右侧固定侧边栏 (AI Chat 等) */
+.right-sidebar-fixed {
+  width: 20%;
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

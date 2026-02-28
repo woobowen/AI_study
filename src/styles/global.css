@@ -1,0 +1,62 @@
+:root {
+  /* Core Color Palette */
+  --bg-canvas: #FFFDF4;
+  --text-primary: #2C1608;
+  --text-heading: #BE8944;
+  --code-bg: #fff7e8;
+  --code-border: #e4c8a6;
+
+  /* Semantic Colors */
+  --color-concept-bg: #FAECD2;
+  --color-concept-border: #f2cf7f;
+  --color-concept-text: #9B6D0B;
+
+  --color-warn-bg: #FBDDD6;
+  --color-warn-border: #f4b1a1;
+  --color-warn-text: #C84A2B;
+
+  --color-highlight-bg: #FDDFCA;
+  --color-highlight-border: #f7bc93;
+  --color-highlight-text: #C35101;
+
+  --color-info-bg: #ecf6fa;
+  --color-info-border: #bde0ee;
+  --color-info-text: #1A7F99;
+
+  --color-success-bg: #effce3;
+  --color-success-border: #c7e7aa;
+  --color-success-text: #478211;
+
+  /* Elevation & Neumorphism */
+  --shadow-soft: 6px 6px 12px rgba(228, 200, 166, 0.3), -6px -6px 12px rgba(255, 255, 255, 0.8);
+  --shadow-hover: 8px 8px 16px rgba(228, 200, 166, 0.4), -8px -8px 16px rgba(255, 255, 255, 0.9);
+  --shadow-inner: inset 4px 4px 8px rgba(228, 200, 166, 0.3), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+}
+
+* {
+  box-sizing: border-box;
+  outline: none; /* 禁用系统原生强高亮边框 */
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 400;
+  color: var(--text-primary);
+  background-color: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+code, pre {
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+  background-color: var(--code-bg);
+  border: 1px solid var(--code-border);
+}
