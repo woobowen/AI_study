@@ -20,6 +20,12 @@ export interface UserProfile {
   studyStage: string;
   /** 兴趣标签列表 */
   interests: string[];
+  /** 用户等级 */
+  level: number;
+  /** 已获得的成就徽章列表 */
+  badges: string[];
+  /** 补充说明（用户自由填写的额外信息） */
+  supplements: string;
 }
 
 /** Store 暴露的操作方法 */
@@ -28,36 +34,57 @@ interface UserStoreActions {
   updateProfile: (patch: Partial<UserProfile>) => void;
   /** 重置为默认画像 */
   resetProfile: () => void;
+  /** 设置是否已生成学习计划 */
+  setHasStudyPlan: (value: boolean) => void;
 }
 
-/** 完整 Store 类型 = 数据 + 操作 */
-type UserStore = UserProfile & UserStoreActions;
+/** Store 顶层状态（画像之外的全局标记） */
+interface UserStoreState {
+  /** 用户画像对象 */
+  userProfile: UserProfile;
+  /** 是否已拥有学习计划（未完成引导前为 false） */
+  hasStudyPlan: boolean;
+}
+
+/** 完整 Store 类型 = 状态 + 操作 */
+type UserStore = UserStoreState & UserStoreActions;
 
 // ========================
 // 默认画像初始值
 // ========================
 const DEFAULT_PROFILE: UserProfile = {
-  userId: '',
-  nickname: '',
-  age: 0,
+  userId: 'u_001',
+  nickname: '博闻',
+  age: 14,
   language: 'zh-CN',
   studyDuration: 30,
-  studyStage: '',
-  interests: [],
+  studyStage: '初中',
+  interests: ['数学', '编程'],
+  level: 5,
+  badges: ['连续打卡 7 天', '首次满分'],
+  supplements: '',
 };
 
 // ========================
 // 创建全局 Zustand Store
 // ========================
 export const useUserStore = create<UserStore>((set) => ({
-  ...DEFAULT_PROFILE,
+  userProfile: { ...DEFAULT_PROFILE },
+  hasStudyPlan: false,
 
   /** 合并传入的部分字段到当前画像 */
   updateProfile: (patch) =>
-    set((state) => ({ ...state, ...patch })),
+    set((state) => ({
+      userProfile: { ...state.userProfile, ...patch },
+    })),
 
   /** 将画像恢复为出厂默认值 */
-  resetProfile: () => set({ ...DEFAULT_PROFILE }),
+  resetProfile: () =>
+    set({ userProfile: { ...DEFAULT_PROFILE } }),
+
+  /** 切换学习计划状态标记 */
+  setHasStudyPlan: (value) =>
+    set({ hasStudyPlan: value }),
 }));
 
 // ========================
@@ -69,7 +96,5 @@ export const useUserStore = create<UserStore>((set) => ({
  * 供 Service 层（如 sseClient）合并到请求 Payload 中使用。
  */
 export function getUserProfilePayload(): UserProfile {
-  const { updateProfile, resetProfile, ...profile } =
-    useUserStore.getState();
-  return profile;
+  return useUserStore.getState().userProfile;
 }

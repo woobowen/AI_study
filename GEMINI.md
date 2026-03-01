@@ -59,3 +59,41 @@
 ## 伍、 数据流与接口铁律 (Data Flow & API Protocol)
 1. **用户画像强制耦合**: 在编写任何涉及调用后端 LLM 接口（如生成学习计划、学前测、知识点讲解）的 Service 函数时，AI 必须自动从全局 Store (Zustand) 获取用户画像上下文并合并到 Request Payload 中。
 2. **SSE 流式消费**: 在生成 API 请求代码时，遇到生成类接口，强制使用 Fetch API 处理 Server-Sent Events 流，并暴露出 `onMessage`, `onError`, `onComplete` 等回调函数供 UI 层使用，严禁将其当作普通 Promise 处理。
+
+---
+
+## 核心微服务契约 (GoAgents API Schema)
+以下三条规则为与 GoAgents 微服务通信时的绝对真理，任何 AI Agent 在生成相关代码时必须无条件遵守。
+
+### 1. 画像结构铁律 (Profile Payload Schema)
+所有向 GoAgents 发送的画像数据**必须是扁平化的一级字段**，结构如下：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `age` | `number` | 用户年龄 |
+| `gender` | `string` | 用户性别 |
+| `language` | `string` | 学习语言 |
+| `duration` | `string` | 学习时长 |
+| `profile_text` | `string` | 画像描述文本 |
+
+* 🚨 **绝对禁止**将上述字段嵌套在 `userProfile`、`profile` 或任何包装对象中。
+* 🚨 **绝对禁止**臆想添加 `subject`、`context` 或任何规范外的额外字段。
+
+### 2. 流式通信铁律 (SSE Event Contract)
+GoAgents 返回的 SSE 状态事件**仅包含以下五种**，不存在其他事件类型：
+
+| 事件名 | 含义 |
+|---|---|
+| `running` | 任务执行中 |
+| `finished` | 任务已完成 |
+| `failed` | 任务失败 |
+| `result` | 携带最终结果数据 |
+| `error` | 携带错误信息 |
+
+* 前端**必须且只能**从 `result` 事件的 `data` 字段中提取最终数据。
+* 严禁从 `finished` 或其他事件中解析业务数据。
+
+### 3. 路由铁律 (Endpoint Path Contract)
+* **严禁**在请求路径后臆想拼接 `/generate` 或任何其他后缀。
+* **严格使用**GoAgents 提供的原生路径，如 `/pretest`、`/studyplan` 等。
+* 示例：正确 → `POST /pretest`；错误 → `POST /pretest/generate`。

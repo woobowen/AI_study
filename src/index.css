@@ -29,13 +29,16 @@
 
   /* 微拟态光影三件套 — 严禁纯黑 */
   --shadow-soft:
-    0 2px 8px rgba(62, 44, 28, 0.06),
-    0 1px 2px rgba(62, 44, 28, 0.04);
+    -6px -6px 12px #ffffff,
+    6px 6px 16px rgba(62, 44, 28, 0.12),
+    0 1px 2px rgba(62, 44, 28, 0.06);
   --shadow-hover:
-    0 4px 16px rgba(62, 44, 28, 0.10),
-    0 2px 4px rgba(62, 44, 28, 0.06);
+    -4px -4px 10px #ffffff,
+    8px 8px 24px rgba(62, 44, 28, 0.16),
+    0 2px 4px rgba(62, 44, 28, 0.08);
   --shadow-inner:
-    inset 0 2px 4px rgba(62, 44, 28, 0.06);
+    inset 2px 2px 6px rgba(62, 44, 28, 0.12),
+    inset -2px -2px 6px #ffffff;
 
   /* 代码区块专属 */
   --code-bg: #f5f0ea;
@@ -49,6 +52,39 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- IDE 降级封印卡片 ---------- */
+.card-disabled-ide {
+  position: relative;
+  background-color: var(--color-info-bg) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.85;
+  overflow: hidden;
+}
+
+/* 45° 斜向扫描线纹理 */
+.card-disabled-ide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 8px,
+    rgba(62, 44, 28, 0.045) 8px,
+    rgba(62, 44, 28, 0.045) 16px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 悬浮态也不允许出现投影 */
+.card-disabled-ide:hover {
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 /* ---------- 全局 Reset ---------- */
