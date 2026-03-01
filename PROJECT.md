@@ -173,7 +173,7 @@
 ## 陆、 GoAgents 后端协同时代 (Backend Integration & SSE Flow)
 ### 1. 全局用户画像状态树 (Global User Profile State)
 前端必须建立一个强类型的全局状态中心（推荐 Zustand），用于存储与管理统一用户画像（User Profile）。
-- **核心字段**: 年龄 (age)、偏好语言 (language)、预期学习时长 (study_duration)、补充信息 (supplements)。
+- **核心字段**: 年龄 (age)、偏好语言 (language)、总学习周期（决定计划的天数/阶段数） (study_duration)、补充信息 (supplements)。
 - **注入拦截**: 在发起 `/studyplan`, `/pretest` 等核心业务请求前，API 拦截器或 Service 层必须自动从状态树中提取并组装这些画像数据，严禁在 UI 组件中散落拼凑。
 
 ### 2. SSE 响应式流处理机制 (Server-Sent Events)

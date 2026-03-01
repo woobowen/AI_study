@@ -48,38 +48,18 @@ export interface PretestResponse {
 // 学习计划 (Study Plan) 相关类型
 // ----------------------------------------------------------------
 
-/** 学习计划中的单个知识节点 */
-export interface StudyPlanNode {
-  /** 节点唯一标识 */
-  nodeId: string;
-  /** 知识点名称 */
-  title: string;
-  /** 知识点简要描述 */
-  description?: string;
-  /** 预计学习时长（分钟） */
-  estimatedMinutes: number;
-  /** 掌握度评估：0-100 */
-  mastery?: number;
-  /** 前置依赖节点 ID 列表 */
-  prerequisites?: string[];
-  /** 排序权重（越小越靠前） */
-  order: number;
+/** 学习计划中的单个阶段 */
+export interface StudyPlanStage {
+  /** 阶段名称，如“第1天”或“第1周” */
+  stage_name: string;
+  /** 当前阶段包含的知识点列表 */
+  knowledge_points: string[];
 }
 
 /** 学习计划完整响应结构（后端 SSE result 载荷） */
 export interface StudyPlanResponse {
-  /** 学习计划唯一标识 */
-  planId: string;
-  /** 学科 / 课程名称 */
-  subject: string;
-  /** 计划总天数 */
-  totalDays: number;
-  /** 每日建议学习时长（分钟） */
-  dailyMinutes: number;
-  /** 知识节点列表（按学习顺序排列） */
-  nodes: StudyPlanNode[];
-  /** 计划生成时间戳（ISO 8601） */
-  createdAt?: string;
+  /** 分阶段学习计划 */
+  stages: StudyPlanStage[];
 }
 
 // ----------------------------------------------------------------
@@ -97,7 +77,7 @@ export interface GoAgentsProfileFields {
   gender: string;
   /** 学习语言 */
   language: string;
-  /** 学习时长 */
+  /** 总学习周期（如 4天 / 1周，将影响返回阶段数） */
   duration: string;
   /** 画像描述文本 */
   profile_text: string;
@@ -114,9 +94,4 @@ export interface PretestRequestPayload extends GoAgentsProfileFields {
 }
 
 /** 学习计划请求载荷 — 扁平化画像 + 业务参数 */
-export interface StudyPlanRequestPayload extends GoAgentsProfileFields {
-  /** 学前测 ID（用于关联测评结果以生成个性化计划，可选） */
-  pretestId?: string;
-  /** 期望学习天数（可选） */
-  totalDays?: number;
-}
+export type StudyPlanRequestPayload = GoAgentsProfileFields;

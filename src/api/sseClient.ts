@@ -119,7 +119,7 @@ export async function fetchSSE(options: FetchSSEOptions): Promise<void> {
       age: store.age,
       gender: '',
       language: store.language,
-      duration: String(store.studyDuration),
+      duration: store.duration,
       profile_text: store.supplements || '',
     };
     mergedPayload = {

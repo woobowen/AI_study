@@ -14,8 +14,8 @@ export interface UserProfile {
   age: number;
   /** 偏好语言，如 'zh-CN' | 'en-US' */
   language: string;
-  /** 每日学习时长（分钟） */
-  studyDuration: number;
+  /** 总学习周期（如：1天 / 3天 / 1周 / 1个月） */
+  duration: string;
   /** 当前学习阶段，如 '小学' | '初中' | '高中' */
   studyStage: string;
   /** 兴趣标签列表 */
@@ -57,7 +57,7 @@ const DEFAULT_PROFILE: UserProfile = {
   nickname: '博闻',
   age: 14,
   language: 'zh-CN',
-  studyDuration: 30,
+  duration: '1周',
   studyStage: '初中',
   interests: ['数学', '编程'],
   level: 5,

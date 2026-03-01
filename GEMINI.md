@@ -73,7 +73,7 @@
 | `age` | `number` | 用户年龄 |
 | `gender` | `string` | 用户性别 |
 | `language` | `string` | 学习语言 |
-| `duration` | `string` | 学习时长 |
+| `duration` | `string` | 总学习周期（决定计划的天数/阶段数） |
 | `profile_text` | `string` | 画像描述文本 |
 
 * 🚨 **绝对禁止**将上述字段嵌套在 `userProfile`、`profile` 或任何包装对象中。

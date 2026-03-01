@@ -1,81 +1,218 @@
-import type { FC } from 'react';
+import type { CSSProperties, FC } from 'react';
+import { useStudyPlan } from '../../../store/useStudyPlan';
 
-/** Mock 每日计划数据 */
-const MOCK_DAYS = [
-  { day: 1, title: 'Python 基础语法' },
-  { day: 2, title: '条件与循环' },
-  { day: 3, title: '函数与模块' },
-  { day: 4, title: '面向对象入门' },
-];
+/** 网格容器：严格 4 列 + 180px 自动行高（项目架构红线） */
+const gridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, 1fr)',
+  gridAutoRows: 'minmax(200px, auto)',
+  gap: 24,
+};
+
+/** 卡片基础样式：遵循 8pt 网格与微拟态光影 */
+const cardBaseStyle: CSSProperties = {
+  borderRadius: 24,
+  background: 'rgba(255, 255, 255, 0.72)',
+  boxShadow: 'var(--shadow-soft)',
+};
 
 /**
  * DailyPlanGrid 每日计划卡片网格
- * 职责：以 4 列 Grid 渲染天数卡片，微凸阴影 + 24px 圆角
- * 视觉规范：卡片使用半透明白色背景，在奶油白底色上清晰浮现
+ * 渲染策略：加载骨架 -> 实际阶段 -> 空状态
  */
 const DailyPlanGrid: FC = () => {
-  return (
-    <section
-      className="daily-plan-grid"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gridAutoRows: 180,
-        gap: 24,
-      }}
-    >
-      {MOCK_DAYS.map((item) => (
-        <div
-          key={item.day}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 8,
-            padding: 24,
-            borderRadius: 24,
-            backgroundColor: 'rgba(255, 255, 255, 0.7)',
-            boxShadow: 'var(--shadow-soft)',
-            cursor: 'pointer',
-            transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            const target = e.currentTarget as HTMLDivElement;
-            target.style.boxShadow = 'var(--shadow-hover)';
-            target.style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            const target = e.currentTarget as HTMLDivElement;
-            target.style.boxShadow = 'var(--shadow-soft)';
-            target.style.transform = 'translateY(0)';
-          }}
-        >
-          {/* 天数标识 - 居中显示，使用标题色 */}
-          <span
-            style={{
-              fontSize: 32,
-              fontWeight: 700,
-              color: 'var(--text-heading)',
-              textAlign: 'center',
-            }}
-          >
-            Day {item.day}
-          </span>
+  const planData = useStudyPlan((s) => s.planData);
+  const isLoading = useStudyPlan((s) => s.isLoading);
+  const learnedPoints = useStudyPlan((s) => s.learnedPoints);
+  const markPointLearned = useStudyPlan((s) => s.markPointLearned);
 
-          {/* 简要描述 - 颜色稍浅，使用次要文本色 */}
-          <span
+  if (isLoading) {
+    return (
+      <section className="daily-plan-grid" style={gridStyle}>
+        {/* 骨架卡片脉冲动画关键帧，仅在本组件作用域内使用 */}
+        <style>
+          {`@keyframes daily-plan-pulse {
+            0%, 100% { opacity: 0.45; }
+            50% { opacity: 1; }
+          }`}
+        </style>
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={`daily-plan-skeleton-${index}`}
             style={{
-              fontSize: 14,
-              fontWeight: 400,
-              color: 'var(--text-secondary)',
-              textAlign: 'center',
+              ...cardBaseStyle,
+              padding: 24,
+              animation: 'daily-plan-pulse 1.6s ease-in-out infinite',
             }}
           >
-            {item.title}
-          </span>
-        </div>
-      ))}
+            <div
+              style={{
+                height: 24,
+                width: '55%',
+                borderRadius: 8,
+                background: 'rgba(228, 200, 166, 0.4)',
+                marginBottom: 24,
+              }}
+            />
+            <div
+              style={{
+                height: 16,
+                width: '100%',
+                borderRadius: 8,
+                background: 'rgba(228, 200, 166, 0.28)',
+                marginBottom: 16,
+              }}
+            />
+            <div
+              style={{
+                height: 16,
+                width: '76%',
+                borderRadius: 8,
+                background: 'rgba(228, 200, 166, 0.24)',
+              }}
+            />
+          </div>
+        ))}
+      </section>
+    );
+  }
+
+  if (planData?.stages && planData.stages.length > 0) {
+    return (
+      <section className="daily-plan-grid" style={gridStyle}>
+        {planData.stages.map((stage, index) => (
+          <article
+            key={index}
+            style={{
+              ...cardBaseStyle,
+              padding: 24,
+              paddingBottom: 24,
+              height: 'fit-content',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 20,
+                fontWeight: 700,
+                color: 'var(--text-heading)',
+              }}
+            >
+              {stage.stage_name}
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {stage.knowledge_points.length > 0 ? (
+                stage.knowledge_points.map((point, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      {/* 学习状态圆圈：绿色表示已学习，灰色表示未学习 */}
+                      <span
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          background: learnedPoints[`${index}-${idx}`]
+                            ? 'var(--color-success-bg)'
+                            : 'transparent',
+                          border: learnedPoints[`${index}-${idx}`]
+                            ? '1px solid var(--color-success-text, #478211)'
+                            : '1px solid #e0e0e0',
+                        }}
+                      />
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: 14,
+                          lineHeight: '20px',
+                          color: 'var(--text-primary)',
+                        }}
+                      >
+                        {point}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pointKey = `${index}-${idx}`;
+                        if (!learnedPoints[pointKey]) {
+                          alert(`即将跳转到学习页面: ${point}`);
+                          markPointLearned(index, idx, true);
+                        }
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: learnedPoints[`${index}-${idx}`] ? 'default' : 'pointer',
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        padding: 0,
+                        marginLeft: 16,
+                        color: learnedPoints[`${index}-${idx}`]
+                          ? 'var(--text-secondary, #7a6a5a)'
+                          : 'var(--text-heading)',
+                      }}
+                    >
+                      {learnedPoints[`${index}-${idx}`] ? '已学习' : '去学习'}
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 14,
+                    lineHeight: '20px',
+                    color: 'var(--text-secondary, #7a6a5a)',
+                  }}
+                >
+                  当前阶段暂无知识点。
+                </p>
+              )}
+            </div>
+          </article>
+        ))}
+      </section>
+    );
+  }
+
+  return (
+    <section className="daily-plan-grid" style={gridStyle}>
+      <div
+        style={{
+          ...cardBaseStyle,
+          gridColumn: '1 / -1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          color: 'var(--text-secondary, #7a6a5a)',
+          fontSize: 16,
+          fontWeight: 500,
+        }}
+      >
+        等待 AI 生成专属学习路线...
+      </div>
     </section>
   );
 };

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import type { FC, FormEvent, CSSProperties } from 'react';
 import { useUserStore } from '../../../store/useUserStore';
+import { useStudyPlanStore } from '../../../store/useStudyPlan';
 import { fetchPretest } from '../../../api/goagents/index';
 import type { PretestResponse, PretestQuestion } from '../../../api/goagents/index';
 import type { SSEStatus } from '../../../api/sseClient';
@@ -13,10 +14,10 @@ import type { SSEStatus } from '../../../api/sseClient';
 interface OnboardingFormData {
   /** 用户年龄 */
   age: number;
-  /** 偏好语言：'zh-CN' 中文 | 'en-US' 英文 */
+  /** 目标编程语言（如 Python / Java / C++） */
   language: string;
-  /** 每日预计学习时长（分钟） */
-  studyDuration: number;
+  /** 总学习周期（单位：天） */
+  duration: number;
   /** 补充说明 */
   supplements: string;
 }
@@ -255,6 +256,7 @@ const OnboardingModal: FC = () => {
   /* 从 Store 获取写入方法 */
   const updateProfile = useUserStore((s) => s.updateProfile);
   const setHasStudyPlan = useUserStore((s) => s.setHasStudyPlan);
+  const generatePlan = useStudyPlanStore((s) => s.generatePlan);
 
   /* ---- 状态机 ---- */
   /** 当前步骤 */
@@ -276,8 +278,8 @@ const OnboardingModal: FC = () => {
   /* 本地表单状态 */
   const [form, setForm] = useState<OnboardingFormData>({
     age: 14,
-    language: 'zh-CN',
-    studyDuration: 30,
+    language: 'Python',
+    duration: 7,
     supplements: '',
   });
 
@@ -294,7 +296,7 @@ const OnboardingModal: FC = () => {
    * 1. 将画像写入 Store
    * 2. 切换到 generating 步骤
    * 3. 将 Store 画像精准映射为 GoAgents 要求的扁平化字段后调用 fetchPretest
-   *    - studyDuration → duration（转为字符串）
+   *    - duration 直接透传为学习周期字符串
    *    - supplements → profile_text
    *    - gender 当前表单未收集，暂设为空字符串
    *    - 严禁嵌套在 userProfile 中，严禁臆想 subject / context 等字段
@@ -302,11 +304,24 @@ const OnboardingModal: FC = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
+    /* 统一提取并规整字段，避免表单脏值直接下发 */
+    const age = Math.max(0, Number(form.age) || 0);
+    const gender = '';
+    const language = String(form.language).trim();
+    const rawDuration = String(form.duration).trim();
+    const duration = rawDuration.endsWith('天') ? rawDuration : `${rawDuration}天`;
+
+    /* 前端边界防御：学习周期不能超过 30 天 */
+    if ((Number.parseInt(rawDuration, 10) || 0) > 30) {
+      alert('学习周期不能超过 30 天');
+      return;
+    }
+
     /* 步骤一：更新全局画像 */
     updateProfile({
-      age: form.age,
-      language: form.language,
-      studyDuration: form.studyDuration,
+      age,
+      language,
+      duration,
       supplements: form.supplements,
     });
 
@@ -322,10 +337,10 @@ const OnboardingModal: FC = () => {
       await fetchPretest(
         {
           /* ---- GoAgents 画像扁平化一级字段（画像结构铁律） ---- */
-          age: form.age,
-          gender: '',
-          language: form.language,
-          duration: String(form.studyDuration),
+          age,
+          gender,
+          language,
+          duration,
           profile_text: form.supplements || '',
           /* ---- 业务参数 ---- */
           question_count: 10,
@@ -422,31 +437,43 @@ const OnboardingModal: FC = () => {
       </div>
 
       <div style={fieldGroupStyle}>
-        <label style={labelStyle}>语言偏好</label>
-        <select
+        <label style={labelStyle}>目标编程语言</label>
+        <input
+          type="text"
           value={form.language}
           onChange={(e) => handleChange('language', e.target.value)}
           style={inputStyle}
-        >
-          <option value="zh-CN">中文</option>
-          <option value="en-US">English</option>
-        </select>
+          placeholder="例如：Python, Java, C++"
+        />
       </div>
 
       <div style={fieldGroupStyle}>
-        <label style={labelStyle}>每日预计学习时长（分钟）</label>
-        <input
-          type="number"
-          min={5}
-          max={480}
-          step={5}
-          value={form.studyDuration}
-          onChange={(e) =>
-            handleChange('studyDuration', Number(e.target.value))
-          }
-          style={inputStyle}
-          placeholder="建议 30 ~ 120 分钟"
-        />
+        <label style={labelStyle}>总学习周期</label>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <input
+            type="number"
+            min={1}
+            max={30}
+            value={form.duration}
+            onChange={(e) => handleChange('duration', Number(e.target.value))}
+            style={{ ...inputStyle, flex: 1 }}
+          />
+          <span
+            style={{
+              fontSize: 16,
+              color: 'var(--text-primary)',
+              fontWeight: 500,
+            }}
+          >
+            天
+          </span>
+        </div>
       </div>
 
       <div style={fieldGroupStyle}>
@@ -493,7 +520,19 @@ const OnboardingModal: FC = () => {
   const handleNextQuestion = () => {
     const isLast = currentQuestionIndex === questions.length - 1;
     if (isLast) {
-      console.log('测验完成', selectedAnswers);
+      // 完成测验后立即触发学习计划生成，然后关闭弹窗回到 Dashboard 主视角
+      const studyPlanPayload = {
+        age: Math.max(0, Number(form.age) || 0),
+        gender: '',
+        language: String(form.language).trim(),
+        // 注意：duration 在最新契约中表示“总学习周期”
+        duration: String(form.duration).trim().endsWith('天')
+          ? String(form.duration).trim()
+          : `${String(form.duration).trim()}天`,
+        profile_text: form.supplements || '',
+      };
+      void generatePlan(studyPlanPayload);
+
       setHasStudyPlan(true);
       setStep('form');
       setQuestions([]);
