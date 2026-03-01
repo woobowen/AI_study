@@ -134,7 +134,7 @@
 ### 1. 路由字典与黑洞机制
 * `/dashboard` ➔ 主控台 [枢纽中心]
 * `/node/:nodeId` ➔ 知识点下钻页 [动态分发]
-* `/tools/k2v` ➔ 视频生成车间 [工具台，不发生内部跳转]
+* `/tools/k2v` ➔ 视频生成车间 [工具台，不发生内部跳转，强制绑定 ImmersiveLayout]
 * `/tools/c2v` ➔ 代码解析车间 [工具台，不发生内部跳转]
 * `/tools/3d-sandbox` ➔ 具身交互沙盒 [工具台，不发生内部跳转]
 * `/directory` ➔ 知识点大全
@@ -145,6 +145,35 @@
 * **分栏布局 (Split-Layout)**: `/dashboard` 与 `/node/:nodeId` 共享。左侧 80% 为主功能区，右侧 20% 为 AI 伴学侧边栏。
     * **极致要求**: AI 侧边栏必须作为 Layout 级的常驻组件，利用全局状态管理接管上下文，保证在页面剧烈切换时实现**零重绘、零销毁**。侧边栏折叠必须使用 `flex-basis` 配合贝塞尔曲线过渡，禁止 `display: none`。
 * **全屏沉浸布局 (Immersive-Layout)**: AIGC 工具组与金库页面专用。`100vw` 宽度，内容区锁死 `max-width: 1200px` 居中。
+
+### 3. K2V 视图专属蓝图 (Knowledge2Video Immersive Blueprint)
+`/tools/k2v` 为 AIGC 工具组核心战场，必须在路由层强制挂载 `ImmersiveLayout`，严禁回退至任何 80/20 分栏容器。页面骨架必须遵守以下三段式构成：
+
+1. **幽灵态返回按钮 (Ghost Back Button)**
+   - 位置：视图左上角，遵循 8pt 网格（推荐 `top: 24px; left: 24px`）。
+   - 视觉：无实体底板，透明背景 + 轻微文字高亮，Hover 时仅允许出现 `--shadow-soft` 的弱光影，不得出现纯黑描边。
+   - 交互：仅承担路由回退职责，不得绑定业务提交逻辑。
+
+2. **存量视频矩阵 (Responsive Masonry Video Matrix)**
+   - 位置：主内容区上半区域，使用响应式瀑布流卡片编排已有视频资产。
+   - 规范：卡片圆角统一 `16px/24px`，间距必须为 8 的倍数；卡片封面与元信息分层呈现，不得使用硬编码像素“魔法数字”。
+   - 约束：视频数据为空时，必须提供极简空态而非空白画布。
+
+3. **纯白高亮 AIGC 生成控制台 (AIGC Control Console)**
+   - 位置：主内容区下半区域，采用高对比纯白台面，形成与奶油底色的视觉分层。
+   - 组件构成：
+     - 无边框 `Textarea`（内凹感由 `--shadow-inner` 与背景变量提供）。
+     - 难度药丸单选组（胶囊按钮，圆角 `9999px`，状态色来自语义变量）。
+     - 巨型 CTA 生成按钮（主行动入口，Hover 使用 `--shadow-hover`）。
+   - 输入约束：文本区、难度选择、时长输入必须具备前端边界防御与禁用态反馈。
+
+4. **生成中加载遮罩 (In-Console Loading Overlay)**
+   - 触发条件：K2V 进入视频生成态（SSE running）。
+   - 挂载位置：必须附着在“控制台容器内部”，严禁全屏遮挡整个 Immersive 页面。
+   - 视觉纪律：
+     - 强制使用 `backdrop-filter: blur(8px)`（含 `-webkit-backdrop-filter` 兼容）。
+     - 叠加低饱和极简微光层与暖金色光环，统一沿用项目暖色语义，不得引入冷白闪烁特效。
+     - 动效节奏需克制，避免持续高频闪烁造成视觉疲劳。
 
 ---
 
@@ -228,3 +257,21 @@
 * 当一个页面/组件需要同时消费多个微服务的数据时，必须在 UI 层（Page/Container 组件或自定义 Hook）中分别调用各领域的 Service 函数，再在本地进行数据组装。
 * **严禁**在任何单一领域的 Service 文件中发起对其他领域后端接口的请求。
 * 若遇到后端已提供聚合接口（BFF 层）的情况，该聚合接口应归属于调用方的领域目录，或单独建立 `~/src/api/bff/` 目录管理。
+
+### 4. K2V 微服务接入规约 (K2V Gateway & Auth Contract)
+1. **端口防撞与代理分流**
+   - K2V 服务默认 `8080` 与 GoAgents 端口存在冲突风险，开发态必须在 `vite.config.ts` 中新增独立代理前缀（如 `/api/k2v`）并映射至宿主机其他端口（推荐 `http://localhost:8081/`）。
+   - 前端业务代码只允许消费 `/api/k2v` 前缀，严禁直接访问 `:8081`。
+
+2. **鉴权壁垒（强制 Header）**
+   - 所有 K2V 接口（`/api/v1/*`）请求必须在 Request Header 中注入 `X-API-Key`。
+   - 缺失 `X-API-Key` 视为严重违规，前端必须在请求封装层统一注入，禁止在页面组件内临时拼接。
+
+3. **目录隔离与领域分治**
+   - K2V 接口层必须独立维护于 `~/src/api/k2v/`，包含 `index.ts`、`types.ts` 与必要的 SSE 封装。
+   - 严禁将 K2V 的 Service 混写进 `goagents/`，也禁止 `k2v/` 直接 import `goagents/` Service。
+
+4. **视频资源闭环（SSE → 文件流）**
+   - 当前端在 SSE `result` 事件中拿到 `data.video_file`（文件名）后，必须按以下规则拼接播放地址：
+     - `/api/k2v/api/v1/files/{filename}`
+   - 未完成该拼接闭环时，严禁直接渲染裸文件名或本地路径到 `<video>`。
