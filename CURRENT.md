@@ -1,7 +1,13 @@
 # 🔄 研发交接快照 (CURRENT.md / HANDOFF)
-**当前战役:** K2V (Knowledge2Video) 视频生成工作台建设
-**宏观状态:** 主控台学习计划已竣工，K2V 后端服务已就绪。前端沉浸式蓝图与鉴权契约已固化。
-**极其详细的下一步开发计划 (Next Actionable Steps):**
-- Step 1: 基础设施配置。修改 `vite.config.ts` 增加 `/api/k2v` 反向代理（指向 8081 避开冲突）；在 `src/api/k2v/index.ts` 中封装带有 `X-API-Key` 鉴权的 SSE 客户端与通用 fetch。
-- Step 2: 沉浸式视界构建。搭建 `src/views/tools/K2V/index.tsx`，实现 100vw 布局、顶部标题区、瀑布流视频矩阵和底部的纯白 AIGC 生成控制台（包含难度药丸组件与 CTA 按钮）。
-- Step 3: 状态闭环。实现 `generate-video` SSE 联调，接入微光加载遮罩，并在收到 `result` 后挂载 `<video>` 标签播放源文件。
+**当前战役:** K2V (Knowledge2Video) 视频生成工作台建设  
+**宏观状态:** K2V 前端全链路（状态注入、微光遮罩、SSE 联调）已完成首次调用点火，但遭遇后端致命拦截：报错提示缺失 `/app/src/api_config.json`。  
+**执行纪律:** 已触发“后端零猜测与绝对从属”熔断机制，暂停前端侧继续猜测式修复。
+
+---
+
+## 极其详细的下一步开发计划 (Next Actionable Steps)
+- Step 1: 立即暂停前端迭代流。冻结 K2V 页面与 API 封装层的新增改动，避免在后端不可用状态下继续堆叠前端补丁。
+- Step 2: 焦点转移至后端 K2V 工程目录进行物理勘探。定位 `/app/src/api_config.json` 缺失根因，核对镜像挂载路径、容器工作目录与配置加载入口。
+- Step 3: 查找缺失配置模板。优先在后端仓库中检索 `api_config` 相关样例、默认模板或环境变量映射文档，完成配置注入并重启服务。
+- Step 4: 后端恢复后再重启前端联调。重新验证 `/api/k2v/api/v1/generate-video` 的 SSE 事件链（running/result/finished/failed/error）与文件流地址拼接闭环。
+

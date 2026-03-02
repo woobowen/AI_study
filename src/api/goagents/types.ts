@@ -45,6 +45,18 @@ export interface PretestResponse {
 }
 
 // ----------------------------------------------------------------
+// 画像生成 (Personal Profile) 相关类型
+// ----------------------------------------------------------------
+
+/** 画像生成响应结构 */
+export interface PersonalProfileResponse {
+  /** 大模型生成的用户画像摘要 */
+  personal_profile: string;
+  /** 允许后端附加扩展字段 */
+  [key: string]: unknown;
+}
+
+// ----------------------------------------------------------------
 // 学习计划 (Study Plan) 相关类型
 // ----------------------------------------------------------------
 
@@ -91,6 +103,12 @@ export interface GoAgentsProfileFields {
 export interface PretestRequestPayload extends GoAgentsProfileFields {
   /** 期望题目数量（可选） */
   question_count?: number;
+}
+
+/** 画像生成请求载荷 — 扁平化画像 + 可选答题上下文 */
+export interface PersonalProfileRequestPayload extends GoAgentsProfileFields {
+  /** 学前测答案文本（可选） */
+  answers?: string[];
 }
 
 /** 学习计划请求载荷 — 扁平化画像 + 业务参数 */

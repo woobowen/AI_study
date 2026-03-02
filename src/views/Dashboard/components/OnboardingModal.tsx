@@ -256,6 +256,7 @@ const OnboardingModal: FC = () => {
   /* 从 Store 获取写入方法 */
   const updateProfile = useUserStore((s) => s.updateProfile);
   const setHasStudyPlan = useUserStore((s) => s.setHasStudyPlan);
+  const setHasCompletedOnboarding = useUserStore((s) => s.setHasCompletedOnboarding);
   const generatePlan = useStudyPlanStore((s) => s.generatePlan);
 
   /* ---- 状态机 ---- */
@@ -534,6 +535,10 @@ const OnboardingModal: FC = () => {
       void generatePlan(studyPlanPayload);
 
       setHasStudyPlan(true);
+      setHasCompletedOnboarding(true);
+      updateProfile({
+        profile_summary: form.supplements.trim() || '已完成学前测，待系统持续更新画像摘要',
+      });
       setStep('form');
       setQuestions([]);
       setCurrentQuestionIndex(0);
@@ -618,6 +623,12 @@ const OnboardingModal: FC = () => {
       </div>
     );
   };
+
+  // 🚧 [开发期后门]: 设为 true 以全局屏蔽学前测弹窗，专注其他模块开发。上线前或需要联调计划生成时改回 false。
+  const DEV_BYPASS_ONBOARDING = false;
+  if (DEV_BYPASS_ONBOARDING) {
+    return null;
+  }
 
   return (
     <div style={overlayStyle}>

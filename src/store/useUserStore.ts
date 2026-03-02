@@ -26,6 +26,8 @@ export interface UserProfile {
   badges: string[];
   /** 补充说明（用户自由填写的额外信息） */
   supplements: string;
+  /** 大模型生成的画像摘要（供 K2V 等下游消费） */
+  profile_summary: string;
 }
 
 /** Store 暴露的操作方法 */
@@ -36,6 +38,8 @@ interface UserStoreActions {
   resetProfile: () => void;
   /** 设置是否已生成学习计划 */
   setHasStudyPlan: (value: boolean) => void;
+  /** 设置是否已完成 Onboarding 全流程 */
+  setHasCompletedOnboarding: (value: boolean) => void;
 }
 
 /** Store 顶层状态（画像之外的全局标记） */
@@ -44,6 +48,8 @@ interface UserStoreState {
   userProfile: UserProfile;
   /** 是否已拥有学习计划（未完成引导前为 false） */
   hasStudyPlan: boolean;
+  /** 是否已完成 Onboarding（路由守卫依据该标记） */
+  hasCompletedOnboarding: boolean;
 }
 
 /** 完整 Store 类型 = 状态 + 操作 */
@@ -63,6 +69,7 @@ const DEFAULT_PROFILE: UserProfile = {
   level: 5,
   badges: ['连续打卡 7 天', '首次满分'],
   supplements: '',
+  profile_summary: '',
 };
 
 // ========================
@@ -71,6 +78,7 @@ const DEFAULT_PROFILE: UserProfile = {
 export const useUserStore = create<UserStore>((set) => ({
   userProfile: { ...DEFAULT_PROFILE },
   hasStudyPlan: false,
+  hasCompletedOnboarding: false,
 
   /** 合并传入的部分字段到当前画像 */
   updateProfile: (patch) =>
@@ -85,6 +93,10 @@ export const useUserStore = create<UserStore>((set) => ({
   /** 切换学习计划状态标记 */
   setHasStudyPlan: (value) =>
     set({ hasStudyPlan: value }),
+
+  /** 切换 Onboarding 完成标记 */
+  setHasCompletedOnboarding: (value) =>
+    set({ hasCompletedOnboarding: value }),
 }));
 
 // ========================

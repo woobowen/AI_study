@@ -6,6 +6,8 @@ import { fetchSSE, type SSECallbacks, type SSEEventData } from '../sseClient';
 
 // 引入业务类型定义
 import type {
+  PersonalProfileRequestPayload,
+  PersonalProfileResponse,
   PretestRequestPayload,
   PretestResponse,
   StudyPlanRequestPayload,
@@ -16,6 +18,8 @@ import { API_PREFIX } from '../../config/api';
 // 重新导出类型，方便外部统一从此模块引入
 export type {
   GoAgentsProfileFields,
+  PersonalProfileRequestPayload,
+  PersonalProfileResponse,
   PretestRequestPayload,
   PretestResponse,
   PretestQuestion,
@@ -31,12 +35,16 @@ export type {
 
 /** 后端真实接口路径（根路径） */
 const PRETEST_ENDPOINT = '/pretest';
+/** 后端真实接口路径（根路径） */
+const PROFILE_ENDPOINT = '/personal_profile';
 
 /** 后端真实接口路径（根路径） */
 const STUDY_PLAN_ENDPOINT = '/studyplan';
 
 /** 代理后请求路径 */
 const PRETEST_URL = `${API_PREFIX.GOAGENTS}${PRETEST_ENDPOINT}`;
+/** 代理后请求路径 */
+const PROFILE_URL = `${API_PREFIX.GOAGENTS}${PROFILE_ENDPOINT}`;
 
 /** 代理后请求路径 */
 const STUDY_PLAN_URL = `${API_PREFIX.GOAGENTS}${STUDY_PLAN_ENDPOINT}`;
@@ -55,6 +63,12 @@ export interface PretestCallbacks extends Omit<SSECallbacks, 'onData'> {
 export interface StudyPlanCallbacks extends Omit<SSECallbacks, 'onData'> {
   /** 每收到一条学习计划 result 事件时触发，载荷已强类型化 */
   onData?: (data: StudyPlanResponse) => void;
+}
+
+/** 画像生成流式回调 */
+export interface PersonalProfileCallbacks extends Omit<SSECallbacks, 'onData'> {
+  /** 每收到一条画像 result 事件时触发 */
+  onData?: (data: PersonalProfileResponse) => void;
 }
 
 // ================================================================
@@ -114,6 +128,33 @@ export function fetchPretest(
 
   return fetchSSE({
     url: PRETEST_URL,
+    payload: payload as unknown as Record<string, unknown>,
+    callbacks: sseCallbacks,
+    signal,
+  });
+}
+
+/**
+ * 生成用户画像摘要（流式）
+ */
+export function fetchPersonalProfile(
+  payload: PersonalProfileRequestPayload,
+  callbacks?: PersonalProfileCallbacks,
+  signal?: AbortSignal,
+): Promise<void> {
+  const sseCallbacks: SSECallbacks = {
+    onStatus: callbacks?.onStatus,
+    onError: callbacks?.onError,
+    onComplete: callbacks?.onComplete,
+    onData: (raw: SSEEventData) => {
+      if (raw.result) {
+        callbacks?.onData?.(raw.result as PersonalProfileResponse);
+      }
+    },
+  };
+
+  return fetchSSE({
+    url: PROFILE_URL,
     payload: payload as unknown as Record<string, unknown>,
     callbacks: sseCallbacks,
     signal,

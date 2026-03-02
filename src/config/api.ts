@@ -5,5 +5,5 @@
 /** 统一的微服务前缀，由 Vite 代理映射至后端根路径 */
 export const API_PREFIX = {
   GOAGENTS: '/api/goagents',
+  K2V: '/api/k2v',
 } as const;
-

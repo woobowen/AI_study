@@ -18,6 +18,13 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(new RegExp(`^${API_PREFIX.GOAGENTS}`), ''),
       },
+      '/api/k2v': {
+        target: 'http://127.0.0.1:8081',
+        changeOrigin: true,
+        timeout: 3600000,
+        proxyTimeout: 3600000,
+        rewrite: (path) => path.replace(/^\/api\/k2v/, ''),
+      },
     },
   },
 })

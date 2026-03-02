@@ -1,4 +1,5 @@
 import type { FC } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * 功能矩阵卡片数据结构
@@ -49,12 +50,23 @@ const FEATURE_CARDS: FeatureCard[] = [
   },
 ];
 
+/** 功能卡片到路由路径的映射（不改动原始数据源结构） */
+const FEATURE_CARD_PATH_MAP: Record<string, string> = {
+  知识点大全: '/knowledge',
+  'K2V 视频生成': '/tools/k2v',
+  'C2V 代码解析': '/tools/c2v',
+  '3D 模型沙盒': '/tools/3d-sandbox',
+  错题本: '/mistakes',
+};
+
 /**
  * FeatureMatrix 功能矩阵
  * 职责：以 3×2 CSS Grid 展示平台核心功能入口卡片
  * 第 6 张卡片（在线编程平台）强制降级封印
  */
 const FeatureMatrix: FC = () => {
+  const navigate = useNavigate();
+
   return (
     <section>
       {/* 区块标题 */}
@@ -77,42 +89,46 @@ const FeatureMatrix: FC = () => {
           gap: 32,
         }}
       >
-        {FEATURE_CARDS.map((card) => (
-          <div
-            key={card.title}
-            className={card.disabled ? 'card-disabled-ide' : undefined}
-            style={{
-              position: 'relative',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 16,
-              padding: 32,
-              minHeight: 200,
-              borderRadius: 16,
-              background: card.disabled
-                ? undefined
-                : 'rgba(255, 255, 255, 0.72)',
-              boxShadow: card.disabled ? undefined : 'var(--shadow-soft)',
-              transition: 'box-shadow 0.25s ease, transform 0.25s ease',
-              cursor: card.disabled ? undefined : 'pointer',
-            }}
-            onMouseEnter={(e) => {
-              if (!card.disabled) {
-                const el = e.currentTarget;
-                el.style.boxShadow = 'var(--shadow-hover)';
-                el.style.transform = 'translateY(-4px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!card.disabled) {
-                const el = e.currentTarget;
-                el.style.boxShadow = 'var(--shadow-soft)';
-                el.style.transform = 'translateY(0)';
-              }
-            }}
-          >
+        {FEATURE_CARDS.map((card) => {
+          // 通过标题读取目标路径，保持现有卡片数据结构不变
+          const cardPath = FEATURE_CARD_PATH_MAP[card.title];
+          return (
+            <div
+              key={card.title}
+              className={`${card.disabled ? 'card-disabled-ide cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 16,
+                padding: 32,
+                minHeight: 200,
+                borderRadius: 16,
+                background: card.disabled
+                  ? undefined
+                  : 'rgba(255, 255, 255, 0.72)',
+                boxShadow: card.disabled ? undefined : 'var(--shadow-soft)',
+                transition: 'box-shadow 0.25s ease, transform 0.25s ease',
+              }}
+              // 仅在可用卡片且存在路径时执行跳转
+              onClick={() => !card.disabled && cardPath && navigate(cardPath)}
+              onMouseEnter={(e) => {
+                if (!card.disabled) {
+                  const el = e.currentTarget;
+                  el.style.boxShadow = 'var(--shadow-hover)';
+                  el.style.transform = 'translateY(-4px)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!card.disabled) {
+                  const el = e.currentTarget;
+                  el.style.boxShadow = 'var(--shadow-soft)';
+                  el.style.transform = 'translateY(0)';
+                }
+              }}
+            >
             {/* 图标 */}
             <span style={{ fontSize: 40, lineHeight: 1 }}>{card.icon}</span>
 
@@ -162,8 +178,9 @@ const FeatureMatrix: FC = () => {
                 🚧 即将上线
               </span>
             )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
