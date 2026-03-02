@@ -21,7 +21,7 @@ interface StudyPlanState {
 /** 学习计划 Store 暴露的动作 */
 interface StudyPlanActions {
   /** 触发学习计划生成（SSE 流式） */
-  generatePlan: (payload: StudyPlanRequestPayload) => Promise<void>;
+  generatePlan: (payload: StudyPlanRequestPayload) => Promise<StudyPlanResponse>;
   /** 标记某个知识点的学习状态 */
   markPointLearned: (stageIndex: number, pointIndex: number, status: boolean) => void;
   /** 清空学习计划状态（用于重置流程） */
@@ -39,20 +39,27 @@ export const useStudyPlanStore = create<StudyPlanStore>((set) => ({
 
   generatePlan: async (payload) => {
     set({ isLoading: true, error: null });
+    let latestPlanData: StudyPlanResponse | null = null;
 
     try {
       await fetchStudyPlan(payload, {
         // 每次收到 result 事件都同步覆盖为后端最新完整数据
         onData: (data) => {
+          latestPlanData = data;
           set({ planData: data, error: null });
         },
         onError: (errorMessage) => {
           set({ error: errorMessage });
         },
       });
+      if (!latestPlanData) {
+        throw new Error('学习计划返回为空');
+      }
+      return latestPlanData;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : '学习计划生成失败';
       set({ error: errorMessage });
+      throw error;
     } finally {
       set({ isLoading: false });
     }

@@ -4,6 +4,7 @@ import { useUserStore } from '../../../store/useUserStore';
 import { useStudyPlanStore } from '../../../store/useStudyPlan';
 import { fetchPretest } from '../../../api/goagents/index';
 import type { PretestResponse, PretestQuestion } from '../../../api/goagents/index';
+import type { StudyPlanStage } from '../../../store/useUserStore';
 import type { SSEStatus } from '../../../api/sseClient';
 
 // ========================
@@ -256,6 +257,7 @@ const OnboardingModal: FC = () => {
   /* 从 Store 获取写入方法 */
   const updateProfile = useUserStore((s) => s.updateProfile);
   const setHasStudyPlan = useUserStore((s) => s.setHasStudyPlan);
+  const setStudyPlan = useUserStore((s) => s.setStudyPlan);
   const setHasCompletedOnboarding = useUserStore((s) => s.setHasCompletedOnboarding);
   const addMasteredNode = useUserStore((state) => state.addMasteredNode);
   const masteredKnowledge = useUserStore((state) => state.mastered_knowledge);
@@ -523,7 +525,11 @@ const OnboardingModal: FC = () => {
   };
 
   /** 统一收敛测验结束后的学习计划触发逻辑（正常完成与熔断结束共用） */
-  const handleFinishQuiz = (): void => {
+  const handleFinishQuiz = async (): Promise<void> => {
+    // 进入学习计划生成态，复用现有加载动画并阻断重复点击
+    setStep('generating');
+    setLoadingText('AI 正在生成你的个性化学习计划...');
+
     const answeredCount = Object.keys(selectedAnswers).length;
     let finalProfileText = `${form.supplements || ''}\n[学前测进度] 已答 ${answeredCount} / ${questions.length} 题`;
     if (masteredKnowledge && masteredKnowledge.length > 0) {
@@ -546,19 +552,30 @@ const OnboardingModal: FC = () => {
       profile_text: finalProfileText.trim(),
     };
 
-    void generatePlan(studyPlanPayload);
+    try {
+      const res = await generatePlan(studyPlanPayload);
+      const rawRes = res as unknown as { stages?: unknown; data?: { stages?: unknown } };
+      // 兼容历史返回差异：优先 stages，其次降级兼容 data.stages
+      const parsedStages = Array.isArray(rawRes.stages)
+        ? (rawRes.stages as StudyPlanStage[])
+        : Array.isArray(rawRes.data?.stages)
+          ? (rawRes.data?.stages as StudyPlanStage[])
+          : [];
 
-    setHasStudyPlan(true);
-    setHasCompletedOnboarding(true);
-    updateProfile({
-      profile_summary: form.supplements.trim() || '已完成学前测，待系统持续更新画像摘要',
-    });
-    setStep('form');
-    setQuestions([]);
-    setCurrentQuestionIndex(0);
-    setSelectedAnswers({});
-    setConfidence(null);
-    setPretestData(null);
+      setStudyPlan(parsedStages);
+      setHasStudyPlan(true);
+      updateProfile({
+        profile_summary: form.supplements.trim() || '已完成学前测，待系统持续更新画像摘要',
+      });
+      // 成功后立刻标记完成，引导弹窗由上层状态卸载
+      setHasCompletedOnboarding(true);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '未知错误';
+      console.error('[OnboardingModal] 学习计划生成失败:', error);
+      // 失败时回退到答题态，允许用户重试
+      setStep('quiz');
+      alert(`学习计划生成失败：${msg}`);
+    }
   };
 
   /** 点击"下一题"或"完成测验" */
@@ -583,7 +600,7 @@ const OnboardingModal: FC = () => {
 
     const isLast = currentQuestionIndex === questions.length - 1;
     if (isLast) {
-      handleFinishQuiz();
+      void handleFinishQuiz();
       return;
     }
 
@@ -629,7 +646,9 @@ const OnboardingModal: FC = () => {
           </div>
           <button
             type="button"
-            onClick={handleFinishQuiz}
+            onClick={() => {
+              void handleFinishQuiz();
+            }}
             style={{
               border: '1px solid var(--color-warn-bg, #FBDDD6)',
               background: 'var(--color-warn-bg, #FBDDD6)',

@@ -30,6 +30,14 @@ export interface UserProfile {
   profile_summary: string;
 }
 
+/** 学习计划中的单个阶段 */
+export interface StudyPlanStage {
+  /** 阶段名称，如“第1天”或“第1周” */
+  stage_name: string;
+  /** 当前阶段包含的知识点列表 */
+  knowledge_points: string[];
+}
+
 /** Store 暴露的操作方法 */
 interface UserStoreActions {
   /** 批量更新用户画像（支持部分字段） */
@@ -38,6 +46,8 @@ interface UserStoreActions {
   resetProfile: () => void;
   /** 设置是否已生成学习计划 */
   setHasStudyPlan: (value: boolean) => void;
+  /** 注水学习计划阶段数据 */
+  setStudyPlan: (plan: StudyPlanStage[]) => void;
   /** 设置是否已完成 Onboarding 全流程 */
   setHasCompletedOnboarding: (value: boolean) => void;
   /** 向动态知识图谱中追加已掌握节点（自动去重） */
@@ -50,6 +60,8 @@ interface UserStoreState {
   userProfile: UserProfile;
   /** 是否已拥有学习计划（未完成引导前为 false） */
   hasStudyPlan: boolean;
+  /** 学习计划阶段数据（用于全局状态注水） */
+  studyPlan: StudyPlanStage[] | null;
   /** 是否已完成 Onboarding（路由守卫依据该标记） */
   hasCompletedOnboarding: boolean;
   /** 动态知识追踪图谱：已掌握知识点列表 */
@@ -82,6 +94,7 @@ const DEFAULT_PROFILE: UserProfile = {
 export const useUserStore = create<UserStore>((set) => ({
   userProfile: { ...DEFAULT_PROFILE },
   hasStudyPlan: false,
+  studyPlan: null,
   hasCompletedOnboarding: false,
   mastered_knowledge: [],
 
@@ -98,6 +111,10 @@ export const useUserStore = create<UserStore>((set) => ({
   /** 切换学习计划状态标记 */
   setHasStudyPlan: (value) =>
     set({ hasStudyPlan: value }),
+
+  /** 写入学习计划阶段数据 */
+  setStudyPlan: (plan) =>
+    set({ studyPlan: plan }),
 
   /** 切换 Onboarding 完成标记 */
   setHasCompletedOnboarding: (value) =>
