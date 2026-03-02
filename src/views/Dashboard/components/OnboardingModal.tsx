@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { FC, FormEvent, CSSProperties } from 'react';
 import { useUserStore } from '../../../store/useUserStore';
 import { useStudyPlanStore } from '../../../store/useStudyPlan';
@@ -257,6 +257,8 @@ const OnboardingModal: FC = () => {
   const updateProfile = useUserStore((s) => s.updateProfile);
   const setHasStudyPlan = useUserStore((s) => s.setHasStudyPlan);
   const setHasCompletedOnboarding = useUserStore((s) => s.setHasCompletedOnboarding);
+  const addMasteredNode = useUserStore((state) => state.addMasteredNode);
+  const masteredKnowledge = useUserStore((state) => state.mastered_knowledge);
   const generatePlan = useStudyPlanStore((s) => s.generatePlan);
 
   /* ---- 状态机 ---- */
@@ -272,6 +274,8 @@ const OnboardingModal: FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   /** 用户已选择的答案记录，key 为题目索引，value 为选项文本 */
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
+  /** 当前题目的元认知自信度（进入下一题前必须选择） */
+  const [confidence, setConfidence] = useState<'我会' | '我不确定' | '我不会' | null>(null);
 
   /* 用于手动取消 SSE 请求 */
   const abortRef = useRef<AbortController | null>(null);
@@ -382,6 +386,7 @@ const OnboardingModal: FC = () => {
                 setQuestions(qs);
                 setCurrentQuestionIndex(0);
                 setSelectedAnswers({});
+                setConfidence(null);
                 setStep('quiz');
               }
             } catch (err) {
@@ -478,12 +483,12 @@ const OnboardingModal: FC = () => {
       </div>
 
       <div style={fieldGroupStyle}>
-        <label style={labelStyle}>补充说明（选填）</label>
+        <label style={labelStyle}>学习目标和补充信息</label>
         <textarea
           value={form.supplements}
           onChange={(e) => handleChange('supplements', e.target.value)}
           style={textareaStyle}
-          placeholder="例如：我对数学比较薄弱，希望重点加强"
+          placeholder="我想学完python的基础内容，我数学能力强，编程能力弱"
         />
       </div>
 
@@ -517,37 +522,74 @@ const OnboardingModal: FC = () => {
     setSelectedAnswers((prev) => ({ ...prev, [currentQuestionIndex]: optionText }));
   };
 
+  /** 统一收敛测验结束后的学习计划触发逻辑（正常完成与熔断结束共用） */
+  const handleFinishQuiz = (): void => {
+    const answeredCount = Object.keys(selectedAnswers).length;
+    let finalProfileText = `${form.supplements || ''}\n[学前测进度] 已答 ${answeredCount} / ${questions.length} 题`;
+    if (masteredKnowledge && masteredKnowledge.length > 0) {
+      // 将图谱节点改为带序号列表，提升后端对掌握内容的解析稳定性
+      const masteredListText = masteredKnowledge
+        .map((item, index) => `${index + 1}. ${item}`)
+        .join('；');
+      finalProfileText += `\n\n[系统动态图谱] 该用户已确切掌握以下知识点：${masteredListText}。请严格避开上述已掌握基础，优先生成更高阶、更具挑战性的学习内容与题目。`;
+    }
+
+    const studyPlanPayload = {
+      age: Math.max(0, Number(form.age) || 0),
+      gender: '',
+      language: String(form.language).trim(),
+      // 注意：duration 在最新契约中表示“总学习周期”
+      duration: String(form.duration).trim().endsWith('天')
+        ? String(form.duration).trim()
+        : `${String(form.duration).trim()}天`,
+      // 统一使用视图层水合后的画像文本，避免底层 API 覆写
+      profile_text: finalProfileText.trim(),
+    };
+
+    void generatePlan(studyPlanPayload);
+
+    setHasStudyPlan(true);
+    setHasCompletedOnboarding(true);
+    updateProfile({
+      profile_summary: form.supplements.trim() || '已完成学前测，待系统持续更新画像摘要',
+    });
+    setStep('form');
+    setQuestions([]);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers({});
+    setConfidence(null);
+    setPretestData(null);
+  };
+
   /** 点击"下一题"或"完成测验" */
   const handleNextQuestion = () => {
+    const current = questions[currentQuestionIndex];
+    const selected = selectedAnswers[currentQuestionIndex];
+    if (!current || !selected || confidence === null) return;
+
+    // 使用后端真实字段 answer 做正确性判定（兼容单选/多选）
+    const correctAnswer =
+      Array.isArray(current.answer) ? String(current.answer[0] ?? '') : String(current.answer ?? '');
+    // 采用前缀匹配，兼容后端在答案后追加解释文本的场景
+    const isCorrect = correctAnswer.startsWith(selected);
+    const stemText = String((current as { stem?: string }).stem ?? current.question ?? '').trim();
+
+    // 仅当“我会”且答对时，允许点亮图谱节点
+    if (confidence === '我会' && isCorrect) {
+      // 直接读取大模型精准提炼的考点标签，若遇到旧数据或缺失则 Fallback 截取题干
+      const nodeLabel = String((current as any).knowledge_point || stemText.slice(0, 10));
+      addMasteredNode(nodeLabel);
+    }
+
     const isLast = currentQuestionIndex === questions.length - 1;
     if (isLast) {
-      // 完成测验后立即触发学习计划生成，然后关闭弹窗回到 Dashboard 主视角
-      const studyPlanPayload = {
-        age: Math.max(0, Number(form.age) || 0),
-        gender: '',
-        language: String(form.language).trim(),
-        // 注意：duration 在最新契约中表示“总学习周期”
-        duration: String(form.duration).trim().endsWith('天')
-          ? String(form.duration).trim()
-          : `${String(form.duration).trim()}天`,
-        profile_text: form.supplements || '',
-      };
-      void generatePlan(studyPlanPayload);
-
-      setHasStudyPlan(true);
-      setHasCompletedOnboarding(true);
-      updateProfile({
-        profile_summary: form.supplements.trim() || '已完成学前测，待系统持续更新画像摘要',
-      });
-      setStep('form');
-      setQuestions([]);
-      setCurrentQuestionIndex(0);
-      setSelectedAnswers({});
-      setPretestData(null);
+      handleFinishQuiz();
       return;
     }
 
     setCurrentQuestionIndex((prev) => prev + 1);
+    // 切题后强制重置自信度，避免上一题状态污染下一题
+    setConfidence(null);
     setSelectedAnswers((prev) => {
       const next = { ...prev };
       delete next[currentQuestionIndex + 1];
@@ -574,8 +616,33 @@ const OnboardingModal: FC = () => {
 
     return (
       <div style={{ ...cardStyle, width: 544 }}>
-        <div style={quizProgressStyle}>
-          {currentQuestionIndex + 1} / {total}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+          }}
+        >
+          <div style={quizProgressStyle}>
+            {currentQuestionIndex + 1} / {total}
+          </div>
+          <button
+            type="button"
+            onClick={handleFinishQuiz}
+            style={{
+              border: '1px solid var(--color-warn-bg, #FBDDD6)',
+              background: 'var(--color-warn-bg, #FBDDD6)',
+              color: 'var(--color-warn-text, #C84A2B)',
+              borderRadius: 9999,
+              padding: '8px 16px',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            结束
+          </button>
         </div>
 
         <div style={quizStemStyle}>
@@ -609,12 +676,45 @@ const OnboardingModal: FC = () => {
           })}
         </div>
 
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 24,
+          }}
+        >
+          {(['我不会', '我不确定', '我会'] as const).map((item) => {
+            const isActive = confidence === item;
+            return (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setConfidence(item)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 9999,
+                  border: '1px solid var(--code-border, #e4c8a6)',
+                  background: isActive ? 'var(--text-heading, #BE8944)' : 'transparent',
+                  color: isActive ? '#ffffff' : 'var(--text-primary)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {item}
+              </button>
+            );
+          })}
+        </div>
+
         <button
           type="button"
+          disabled={!selected || confidence === null}
           style={{
             ...buttonStyle,
-            opacity: selected ? 1 : 0.5,
-            pointerEvents: selected ? 'auto' : 'none',
+            opacity: selected && confidence !== null ? 1 : 0.5,
+            pointerEvents: selected && confidence !== null ? 'auto' : 'none',
           }}
           onClick={handleNextQuestion}
         >
@@ -623,6 +723,13 @@ const OnboardingModal: FC = () => {
       </div>
     );
   };
+
+  // 题目变化时重置自信度，确保每题都经过独立元认知判断
+  useEffect(() => {
+    if (step === 'quiz') {
+      setConfidence(null);
+    }
+  }, [currentQuestionIndex, step]);
 
   // 🚧 [开发期后门]: 设为 true 以全局屏蔽学前测弹窗，专注其他模块开发。上线前或需要联调计划生成时改回 false。
   const DEV_BYPASS_ONBOARDING = false;

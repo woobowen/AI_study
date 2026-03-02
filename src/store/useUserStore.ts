@@ -40,6 +40,8 @@ interface UserStoreActions {
   setHasStudyPlan: (value: boolean) => void;
   /** 设置是否已完成 Onboarding 全流程 */
   setHasCompletedOnboarding: (value: boolean) => void;
+  /** 向动态知识图谱中追加已掌握节点（自动去重） */
+  addMasteredNode: (node: string) => void;
 }
 
 /** Store 顶层状态（画像之外的全局标记） */
@@ -50,6 +52,8 @@ interface UserStoreState {
   hasStudyPlan: boolean;
   /** 是否已完成 Onboarding（路由守卫依据该标记） */
   hasCompletedOnboarding: boolean;
+  /** 动态知识追踪图谱：已掌握知识点列表 */
+  mastered_knowledge: string[];
 }
 
 /** 完整 Store 类型 = 状态 + 操作 */
@@ -79,6 +83,7 @@ export const useUserStore = create<UserStore>((set) => ({
   userProfile: { ...DEFAULT_PROFILE },
   hasStudyPlan: false,
   hasCompletedOnboarding: false,
+  mastered_knowledge: [],
 
   /** 合并传入的部分字段到当前画像 */
   updateProfile: (patch) =>
@@ -97,6 +102,14 @@ export const useUserStore = create<UserStore>((set) => ({
   /** 切换 Onboarding 完成标记 */
   setHasCompletedOnboarding: (value) =>
     set({ hasCompletedOnboarding: value }),
+
+  /** 追加掌握节点并去重，避免重复污染图谱 */
+  addMasteredNode: (node) =>
+    set((state) => ({
+      mastered_knowledge: state.mastered_knowledge.includes(node)
+        ? state.mastered_knowledge
+        : [...state.mastered_knowledge, node],
+    })),
 }));
 
 // ========================
