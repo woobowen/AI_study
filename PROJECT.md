@@ -176,6 +176,16 @@
      - 叠加低饱和极简微光层与暖金色光环，统一沿用项目暖色语义，不得引入冷白闪烁特效。
      - 动效节奏需克制，避免持续高频闪烁造成视觉疲劳。
 
+### 4. C2V / K2V 同构 UI 铁律 (Dual-End Isomorphic UI Laws)
+1. **双端历史矩阵列阵 (Dual-End History Matrix)**
+   - 适用范围：`/tools/k2v` 与 `/tools/c2v` 底部历史区。
+   - 强制规范：历史记录容器必须且只能使用 3 列 CSS Grid 瀑布流，固定写法为 `gridTemplateColumns: 'repeat(3, 1fr)'`。
+   - 布局纪律：历史矩阵必须位于输入/控制台区域下方，严禁通过条件渲染覆盖或替换原始输入区；输入区、生成区、历史区必须保持纵向堆叠。
+2. **16:9 沉浸视界 (16:9 Immersive Media Viewport)**
+   - 适用范围：K2V/C2V 的当前播放区与历史卡片视频容器。
+   - 强制样式：播放器容器必须显式挂载 `aspectRatio: '16/9'`、`backgroundColor: '#000000'`、`boxShadow: 'var(--shadow-soft)'`。
+   - 禁止事项：严禁将 `<video>` 直接作为无容器裸元素渲染，避免宽高塌陷、比例失真与视觉层级失控。
+
 ---
 
 ## 肆、 防御机制与工程降级 (Defensive Engineering)
@@ -258,6 +268,16 @@
 * 当一个页面/组件需要同时消费多个微服务的数据时，必须在 UI 层（Page/Container 组件或自定义 Hook）中分别调用各领域的 Service 函数，再在本地进行数据组装。
 * **严禁**在任何单一领域的 Service 文件中发起对其他领域后端接口的请求。
 * 若遇到后端已提供聚合接口（BFF 层）的情况，该聚合接口应归属于调用方的领域目录，或单独建立 `~/src/api/bff/` 目录管理。
+
+### 4. 鉴权穿透与异构载荷映射 (Auth Penetration & Heterogeneous Payload Mapping)
+1. **鉴权穿透 (Blob Proxy)**
+   - 受 `X-API-Key` 保护的视频资源，前端严禁将后端 URL 字符串直接绑定到 `<video src>`。
+   - 必须由 API 层提供专用拦截器函数（如 `fetchVideoBlobUrl` / `fetchK2VVideoBlobUrl` / `fetchC2VVideoBlobUrl`），以 `fetch` 拉取二进制流后转换为 `URL.createObjectURL(blob)`，再将本地对象 URL 交给 UI 层渲染。
+   - UI 层职责仅限播放与交互，鉴权头拼装、流拉取与对象 URL 生成必须在 `src/api/` 层闭环。
+2. **异构载荷映射 (Heterogeneous Payload Mapping)**
+   - 后端 Schema 为扁平结构时，前端请求体必须执行字段展平映射，严禁在顶层发送 `profile_text` 这类历史兼容字段。
+   - 用户画像必须提取并映射 `age`、`language` 等核心字段；补充描述（`supplements` / `profile_summary`）必须并入 `extra_info` 后发送。
+   - 任何字段映射变更必须同步更新 TypeScript 类型定义与 Service 组装逻辑，禁止“UI 直拼字符串”绕过 API 层契约。
 
 ### 4. K2V 微服务接入规约 (K2V Gateway & Auth Contract)
 1. **端口防撞与代理分流**

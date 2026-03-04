@@ -61,6 +61,7 @@
 1. **用户画像强制耦合**: 在编写任何涉及调用后端 LLM 接口（如生成学习计划、学前测、知识点讲解）的 Service 函数时，AI 必须自动从全局 Store (Zustand) 获取用户画像上下文并合并到 Request Payload 中。
    🚨 新增红线：在组装 Payload 之前，必须从 Store 中提取已掌握的知识点数组 (mastered_knowledge)，将其动态格式化并追加到画像的补充信息字段末尾。
 2. **SSE 流式消费**: 在生成 API 请求代码时，遇到生成类接口，强制使用 Fetch API 处理 Server-Sent Events 流，并暴露出 `onMessage`, `onError`, `onComplete` 等回调函数供 UI 层使用，严禁将其当作普通 Promise 处理。
+3. **媒体鉴权穿透铁律**: 前端任何 `<video>` 或 `<audio>` 标签，若目标资源受后端的 `X-API-Key` 保护，严禁直接绑定网络 URL 字符串。必须在 API 层封装专门的 Fetch Blob 转换函数，通过浏览器内存对象 (`URL.createObjectURL`) 安全渲染。
 
 ---
 
