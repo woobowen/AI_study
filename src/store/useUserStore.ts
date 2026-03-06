@@ -38,18 +38,34 @@ export interface StudyPlanStage {
   knowledge_points: string[];
 }
 
+/** Onboarding 提交的画像契约（前后端共识字段） */
+export interface OnboardingProfilePayload {
+  age: number | string;
+  language: string;
+  studyDuration: number | string;
+  supplements: string;
+}
+
 /** Store 暴露的操作方法 */
 interface UserStoreActions {
   /** 批量更新用户画像（支持部分字段） */
   updateProfile: (patch: Partial<UserProfile>) => void;
   /** 重置为默认画像 */
   resetProfile: () => void;
+  /** 设置画像是否完善 */
+  setIsProfileComplete: (value: boolean) => void;
+  /** 设置学前测是否完成 */
+  setIsPretestComplete: (value: boolean) => void;
   /** 设置是否已生成学习计划 */
   setHasStudyPlan: (value: boolean) => void;
   /** 注水学习计划阶段数据 */
   setStudyPlan: (plan: StudyPlanStage[]) => void;
   /** 设置是否已完成 Onboarding 全流程 */
   setHasCompletedOnboarding: (value: boolean) => void;
+  /** 完成 Onboarding：落地画像并放行 Dashboard */
+  completeOnboarding: (profileData: OnboardingProfilePayload) => void;
+  /** 完成学前测：放行主控台 */
+  completePretest: () => void;
   /** 向动态知识图谱中追加已掌握节点（自动去重） */
   addMasteredNode: (node: string) => void;
 }
@@ -58,6 +74,10 @@ interface UserStoreActions {
 interface UserStoreState {
   /** 用户画像对象 */
   userProfile: UserProfile;
+  /** 画像是否已完善 */
+  isProfileComplete: boolean;
+  /** 学前测是否已完成 */
+  isPretestComplete: boolean;
   /** 是否已拥有学习计划（未完成引导前为 false） */
   hasStudyPlan: boolean;
   /** 学习计划阶段数据（用于全局状态注水） */
@@ -93,6 +113,8 @@ const DEFAULT_PROFILE: UserProfile = {
 // ========================
 export const useUserStore = create<UserStore>((set) => ({
   userProfile: { ...DEFAULT_PROFILE },
+  isProfileComplete: false,
+  isPretestComplete: false,
   hasStudyPlan: false,
   studyPlan: null,
   hasCompletedOnboarding: false,
@@ -108,6 +130,14 @@ export const useUserStore = create<UserStore>((set) => ({
   resetProfile: () =>
     set({ userProfile: { ...DEFAULT_PROFILE } }),
 
+  /** 切换画像完成标记 */
+  setIsProfileComplete: (value) =>
+    set({ isProfileComplete: value }),
+
+  /** 切换学前测完成标记 */
+  setIsPretestComplete: (value) =>
+    set({ isPretestComplete: value }),
+
   /** 切换学习计划状态标记 */
   setHasStudyPlan: (value) =>
     set({ hasStudyPlan: value }),
@@ -119,6 +149,28 @@ export const useUserStore = create<UserStore>((set) => ({
   /** 切换 Onboarding 完成标记 */
   setHasCompletedOnboarding: (value) =>
     set({ hasCompletedOnboarding: value }),
+
+  /** 完成 Onboarding：一次性更新画像并触发放行阀门 */
+  completeOnboarding: (profileData) =>
+    set((state) => {
+      const rawDuration = String(profileData.studyDuration).trim();
+      const duration = rawDuration.endsWith('天') ? rawDuration : `${rawDuration}天`;
+
+      return {
+        userProfile: {
+          ...state.userProfile,
+          age: Number(profileData.age) || state.userProfile.age,
+          language: String(profileData.language).trim() || state.userProfile.language,
+          duration,
+          supplements: String(profileData.supplements),
+        },
+        isProfileComplete: true,
+      };
+    }),
+
+  /** 完成学前测：仅切换测验完成标记 */
+  completePretest: () =>
+    set({ isPretestComplete: true }),
 
   /** 追加掌握节点并去重，避免重复污染图谱 */
   addMasteredNode: (node) =>
@@ -139,4 +191,24 @@ export const useUserStore = create<UserStore>((set) => ({
  */
 export function getUserProfilePayload(): UserProfile {
   return useUserStore.getState().userProfile;
+}
+
+/**
+ * C2V 画像上下文兼容导出：
+ * 返回结构保持历史约定，避免业务层重复改造。
+ */
+export function getUserC2VProfileContext(): { userProfile: UserProfile } {
+  return {
+    userProfile: useUserStore.getState().userProfile,
+  };
+}
+
+/**
+ * K2V 画像上下文兼容导出：
+ * 与 C2V 保持同构，便于异构 AIGC 模块复用。
+ */
+export function getUserK2VProfileContext(): { userProfile: UserProfile } {
+  return {
+    userProfile: useUserStore.getState().userProfile,
+  };
 }

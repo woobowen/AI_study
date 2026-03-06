@@ -1,11 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import type { FC, FormEvent, CSSProperties } from 'react';
 import { useUserStore } from '../../../store/useUserStore';
 import { useStudyPlanStore } from '../../../store/useStudyPlan';
-import { fetchPretest } from '../../../api/goagents/index';
 import type { PretestResponse, PretestQuestion } from '../../../api/goagents/index';
-import type { StudyPlanStage } from '../../../store/useUserStore';
-import type { SSEStatus } from '../../../api/sseClient';
+import type { StudyPlanStage, OnboardingProfilePayload } from '../../../store/useUserStore';
+import { updateProfile as updateProfileApi } from '../../../api/user/profile';
 
 // ========================
 // 类型定义
@@ -255,7 +254,7 @@ const OnboardingModal: FC = () => {
   injectKeyframes();
 
   /* 从 Store 获取写入方法 */
-  const updateProfile = useUserStore((s) => s.updateProfile);
+  const patchProfile = useUserStore((s) => s.updateProfile);
   const setHasStudyPlan = useUserStore((s) => s.setHasStudyPlan);
   const setStudyPlan = useUserStore((s) => s.setStudyPlan);
   const setHasCompletedOnboarding = useUserStore((s) => s.setHasCompletedOnboarding);
@@ -269,18 +268,19 @@ const OnboardingModal: FC = () => {
   /** 加载阶段的提示文字 */
   const [loadingText, setLoadingText] = useState<string>('正在连接 AI 大脑...');
   /** 学前测结果数据（原始响应，保留备用） */
-  const [pretestData, setPretestData] = useState<PretestResponse | null>(null);
+  const [pretestData] = useState<PretestResponse | null>(null);
   /** 学前测题目数组 */
-  const [questions, setQuestions] = useState<PretestQuestion[]>([]);
+  const [questions] = useState<PretestQuestion[]>([]);
   /** 当前正在作答的题目索引（从 0 开始） */
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
   /** 用户已选择的答案记录，key 为题目索引，value 为选项文本 */
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   /** 当前题目的元认知自信度（进入下一题前必须选择） */
   const [confidence, setConfidence] = useState<'我会' | '我不确定' | '我不会' | null>(null);
-
-  /* 用于手动取消 SSE 请求 */
-  const abortRef = useRef<AbortController | null>(null);
+  /** 画像提交 loading 态 */
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  /** 画像提交错误提示 */
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   /* 本地表单状态 */
   const [form, setForm] = useState<OnboardingFormData>({
@@ -310,115 +310,35 @@ const OnboardingModal: FC = () => {
    */
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setSubmitError(null);
 
     /* 统一提取并规整字段，避免表单脏值直接下发 */
     const age = Math.max(0, Number(form.age) || 0);
-    const gender = '';
     const language = String(form.language).trim();
     const rawDuration = String(form.duration).trim();
-    const duration = rawDuration.endsWith('天') ? rawDuration : `${rawDuration}天`;
-
     /* 前端边界防御：学习周期不能超过 30 天 */
     if ((Number.parseInt(rawDuration, 10) || 0) > 30) {
-      alert('学习周期不能超过 30 天');
+      setSubmitError('学习周期不能超过 30 天');
       return;
     }
 
-    /* 步骤一：更新全局画像 */
-    updateProfile({
+    const profileData: OnboardingProfilePayload = {
       age,
       language,
-      duration,
+      studyDuration: Number.parseInt(rawDuration, 10) || form.duration,
       supplements: form.supplements,
-    });
+    };
 
-    /* 步骤二：进入加载态 */
-    setStep('generating');
-    setLoadingText('正在连接 AI 大脑...');
-
-    /* 步骤三：将表单数据精准映射为 GoAgents 扁平化请求体 */
-    const controller = new AbortController();
-    abortRef.current = controller;
-
+    setIsSubmitting(true);
     try {
-      await fetchPretest(
-        {
-          /* ---- GoAgents 画像扁平化一级字段（画像结构铁律） ---- */
-          age,
-          gender,
-          language,
-          duration,
-          profile_text: form.supplements || '',
-          /* ---- 业务参数 ---- */
-          question_count: 10,
-        },
-        {
-          /** 流状态变更：running 时更新提示文字 */
-          onStatus: (status: SSEStatus) => {
-            if (status === 'running') {
-              setLoadingText('AI 正在为你量身定制学前测题目...');
-            }
-          },
-
-          /**
-           * 收到学前测结果数据：
-           * 经 sseClient 解包后，data 的结构应为 { questions: [...] }。
-           * 后端题目字段可能是 stem（实际）或 question（类型定义），需兼容处理。
-           * 添加 try-catch 防御，避免解析异常导致 UI 死锁。
-           */
-          onData: (data: PretestResponse) => {
-            try {
-              console.log('[OnboardingModal] onData 收到原始数据:', JSON.stringify(data));
-              setPretestData(data);
-
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const raw = data as any;
-              const qs: PretestQuestion[] = (
-                raw?.questions ??
-                raw?.data?.questions ??
-                []
-              ).map((q: Record<string, unknown>) => ({
-                ...q,
-                question: q.question ?? q.stem ?? '',
-              }));
-
-              console.log('[OnboardingModal] 解析得到题目数量:', qs.length);
-
-              if (qs.length > 0) {
-                setQuestions(qs);
-                setCurrentQuestionIndex(0);
-                setSelectedAnswers({});
-                setConfidence(null);
-                setStep('quiz');
-              }
-            } catch (err) {
-              console.error('[OnboardingModal] onData 解析异常:', err, '原始数据:', data);
-              setStep('form');
-              alert('题目数据解析失败，请重试');
-            }
-          },
-
-          /**
-           * 流正常结束回调。
-           * 数据解析和步骤切换已由 onData 完成，错误恢复已由 catch 处理。
-           * 此处仅做无副作用的日志记录，绝对不能覆盖 step 状态，
-           * 否则会因 React 闭包陷阱导致竞态覆盖 onData 的 setStep('quiz')。
-           */
-          onComplete: () => {
-            console.log('[OnboardingModal] SSE 流彻底结束');
-          },
-
-          /** 流出错回调：记录日志（实际恢复逻辑统一在 catch 中处理） */
-          onError: (errorMessage: string) => {
-            console.error('[OnboardingModal] SSE 错误:', errorMessage);
-          },
-        },
-        controller.signal,
-      );
+      await updateProfileApi(profileData);
+      useUserStore.getState().completeOnboarding(profileData);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : '未知错误';
-      setStep('form');
-      alert(`AI 生成失败: ${msg}`);
+      setSubmitError(msg || '画像提交失败，请稍后重试');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -494,8 +414,28 @@ const OnboardingModal: FC = () => {
         />
       </div>
 
-      <button type="submit" style={buttonStyle}>
-        开始学习之旅
+      {submitError && (
+        <p
+          style={{
+            margin: '4px 0 12px',
+            fontSize: 14,
+            color: 'var(--color-warn-text, #C84A2B)',
+          }}
+        >
+          {submitError}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        style={{
+          ...buttonStyle,
+          opacity: isSubmitting ? 0.7 : 1,
+          pointerEvents: isSubmitting ? 'none' : 'auto',
+        }}
+      >
+        {isSubmitting ? '提交中...' : '开始学习之旅'}
       </button>
     </form>
   );
@@ -531,16 +471,7 @@ const OnboardingModal: FC = () => {
     setLoadingText('AI 正在生成你的个性化学习计划...');
 
     const answeredCount = Object.keys(selectedAnswers).length;
-    let finalProfileText = `${form.supplements || ''}\n[学前测进度] 已答 ${answeredCount} / ${questions.length} 题`;
-    if (masteredKnowledge && masteredKnowledge.length > 0) {
-      // 将图谱节点改为带序号列表，提升后端对掌握内容的解析稳定性
-      const masteredListText = masteredKnowledge
-        .map((item, index) => `${index + 1}. ${item}`)
-        .join('；');
-      finalProfileText += `\n\n[系统动态图谱] 该用户已确切掌握以下知识点：${masteredListText}。请严格避开上述已掌握基础，优先生成更高阶、更具挑战性的学习内容与题目。`;
-    }
-
-    const studyPlanPayload = {
+    const payload = {
       age: Math.max(0, Number(form.age) || 0),
       gender: '',
       language: String(form.language).trim(),
@@ -548,12 +479,19 @@ const OnboardingModal: FC = () => {
       duration: String(form.duration).trim().endsWith('天')
         ? String(form.duration).trim()
         : `${String(form.duration).trim()}天`,
+      profile_text: `${form.supplements || ''}\n[学前测进度] 已答 ${answeredCount} / ${questions.length} 题`,
+    };
+    const masteredText = masteredKnowledge.length > 0
+      ? `\n特别注意：该用户已完全掌握以下知识点：${masteredKnowledge.join(', ')}。请在生成计划和考题时，绝对不要再包含或考核这些已掌握的内容！`
+      : '';
+    const finalPayload = {
+      ...payload,
       // 统一使用视图层水合后的画像文本，避免底层 API 覆写
-      profile_text: finalProfileText.trim(),
+      profile_text: ((payload.profile_text || '') + masteredText).trim(),
     };
 
     try {
-      const res = await generatePlan(studyPlanPayload);
+      const res = await generatePlan(finalPayload);
       const rawRes = res as unknown as { stages?: unknown; data?: { stages?: unknown } };
       // 兼容历史返回差异：优先 stages，其次降级兼容 data.stages
       const parsedStages = Array.isArray(rawRes.stages)
@@ -564,7 +502,7 @@ const OnboardingModal: FC = () => {
 
       setStudyPlan(parsedStages);
       setHasStudyPlan(true);
-      updateProfile({
+      patchProfile({
         profile_summary: form.supplements.trim() || '已完成学前测，待系统持续更新画像摘要',
       });
       // 成功后立刻标记完成，引导弹窗由上层状态卸载

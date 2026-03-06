@@ -113,3 +113,51 @@ export interface PersonalProfileRequestPayload extends GoAgentsProfileFields {
 
 /** 学习计划请求载荷 — 扁平化画像 + 业务参数 */
 export type StudyPlanRequestPayload = GoAgentsProfileFields;
+
+// ----------------------------------------------------------------
+// 知识点讲解 (Knowledge Explanation) 相关类型
+// ----------------------------------------------------------------
+
+/** 知识点讲解请求载荷 */
+export interface KnowledgeExplanationRequest {
+  /** 目标知识点（必填） */
+  knowledge_point: string;
+  /** 用户年龄（可选） */
+  age?: number;
+  /** 用户性别（可选） */
+  gender?: string;
+  /** 学习语言（可选） */
+  language?: string;
+  /** 学习周期（可选） */
+  duration?: string;
+  /** 画像补充文本（可选，GoAgents 契约字段） */
+  profile_text?: string;
+}
+
+/** 思维导图分支 */
+export interface MindMapBranch {
+  /** 分支标题 */
+  title: string;
+  /** 分支摘要 */
+  summary: string;
+  /** 子主题列表 */
+  sub_topics: string[];
+}
+
+/** 思维导图根节点 */
+export interface MindMap {
+  /** 根主题 */
+  root_topic: string;
+  /** 主分支数组 */
+  main_branches: MindMapBranch[];
+}
+
+/** 知识点讲解最终结果 */
+export interface KnowledgeExplanationResult {
+  /** 回传的知识点 */
+  knowledge_point: string;
+  /** Markdown 讲解正文 */
+  markdown: string;
+  /** 思维导图结构 */
+  mind_map: MindMap;
+}

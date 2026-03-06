@@ -22,6 +22,8 @@ interface StudyPlanState {
 interface StudyPlanActions {
   /** 触发学习计划生成（SSE 流式） */
   generatePlan: (payload: StudyPlanRequestPayload) => Promise<StudyPlanResponse>;
+  /** 直接写入学习计划（用于本地注水或离线模拟） */
+  setPlanData: (plan: StudyPlanResponse) => void;
   /** 标记某个知识点的学习状态 */
   markPointLearned: (stageIndex: number, pointIndex: number, status: boolean) => void;
   /** 清空学习计划状态（用于重置流程） */
@@ -63,6 +65,10 @@ export const useStudyPlanStore = create<StudyPlanStore>((set) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  setPlanData: (plan) => {
+    set({ planData: plan, isLoading: false, error: null });
   },
 
   markPointLearned: (stageIndex, pointIndex, status) => {

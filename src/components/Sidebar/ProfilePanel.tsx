@@ -1,5 +1,6 @@
 import React from 'react';
 import { useUserStore } from '../../store/useUserStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 /**
  * 侧边栏顶部 —— 用户画像面板
@@ -10,6 +11,7 @@ const ProfilePanel: React.FC = () => {
   const nickname = useUserStore((s) => s.userProfile?.nickname ?? '');
   const level = useUserStore((s) => s.userProfile?.level ?? 0);
   const badges = useUserStore((s) => s.userProfile?.badges ?? []);
+  const logout = useAuthStore((s) => s.logout);
 
   return (
     <section
@@ -101,6 +103,33 @@ const ProfilePanel: React.FC = () => {
           </span>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={logout}
+        style={{
+          marginTop: 8,
+          padding: '8px 16px',
+          borderRadius: 9999,
+          border: '1px solid transparent',
+          background: 'transparent',
+          color: 'var(--color-warn-text, #C84A2B)',
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: 'pointer',
+          transition: 'box-shadow 160ms ease, background-color 160ms ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.boxShadow = 'var(--shadow-inner)';
+          e.currentTarget.style.backgroundColor = 'var(--color-warn-bg, #FBDDD6)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.boxShadow = 'none';
+          e.currentTarget.style.backgroundColor = 'transparent';
+        }}
+      >
+        [登出账号]
+      </button>
     </section>
   );
 };

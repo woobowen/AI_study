@@ -186,6 +186,18 @@
    - 强制样式：播放器容器必须显式挂载 `aspectRatio: '16/9'`、`backgroundColor: '#000000'`、`boxShadow: 'var(--shadow-soft)'`。
    - 禁止事项：严禁将 `<video>` 直接作为无容器裸元素渲染，避免宽高塌陷、比例失真与视觉层级失控。
 
+### 5. 知识节点沉浸页布局铁律 (Knowledge Node Immersive Layout Laws)
+1. **宏观骨架 80/20 分治**
+   - 适用范围：`/node/:nodeId`。
+   - 左侧主脑区必须占据 `80%` 宽度，并允许纵向滚动，作为知识瀑布流主舞台。
+   - 右侧陪伴区必须占据 `20%` 宽度，并保持固定陪伴属性（常驻、稳定、不可被内容区挤压）。
+2. **右侧陪伴区 10/20/70 精准切割**
+   - 右侧容器必须使用纵向 Flex 切分为三个不可混并的区域：
+     - `10%`：返回中枢（Back Hub），仅承载返回导航与轻交互提示。
+     - `20%`：今日进度罗盘（Daily Progress Compass），必须包含环形进度条与成功态点亮反馈。
+     - `70%`：AI 伴学聊天流（AI Companion Chat Stream），作为长会话主容器，优先保证可读与连续性。
+   - 三段高度比例属于宪法级硬约束，严禁以内容自适应破坏 10/20/70 比例。
+
 ---
 
 ## 肆、 防御机制与工程降级 (Defensive Engineering)
@@ -210,6 +222,9 @@
 2. **知识节点 (Knowledge Node)**: 左侧 80% 区域彻底摒弃左右分栏，执行标准的单列纵向瀑布流 (`flex-direction: column; gap: 40px`)。底部 CTA 必须是严格的状态机驱动。
 3. **C2V 工具台**: 代码输入框强制挂载 `--code-bg` 变量，与上方普通 `textarea` 形成剧烈的视觉对比场。
 4. **金库 (Vault)**: 顶部的错题/收藏切换必须依赖绝对定位的物理滑块 (Slider) 在底槽 (Track) 中平滑移动，绝不允许使用生硬的独立按钮。
+5. **节点页左侧瀑布流 (Left Waterfall)**: 知识节点左侧主脑区必须彻底抛弃横向网格，强制采用自上而下单线程沉浸流；卡片间距固定为 `gap: 40px`，不得降级。
+6. **Card 5 终极状态机 (Card 5 State Machine)**: 第五卡片为闭环核心，状态流转必须严格遵循 `State A (初见态，巨大测试按钮) -> State B (测试中，展示考题) -> State C (通关分发态，展示绿色通过反馈 + 推荐习题 + 底部 Action Bar 条件渲染分支)`，严禁跳态与并态混写。
+7. **3D 沙盒占位符契约 (Card 4 Placeholder Contract)**: 在 Card 4 后端未就绪前，前端必须提供带“可交互”标签的 WebGL 占位容器完成物理占位，视觉比例必须保持 `16:9` 或固定高度（例如 `500px`），不得用文本空态替代。
 ## 陆、 GoAgents 后端协同时代 (Backend Integration & SSE Flow)
 ### 1. 全局用户画像状态树 (Global User Profile State)
 前端必须建立一个强类型的全局状态中心（推荐 Zustand），用于存储与管理统一用户画像（User Profile）。
@@ -220,6 +235,22 @@
 由于后端核心能力（学习计划、测试、知识讲解等）均基于大语言模型且采用 SSE 流式返回，前端严禁使用传统的阻塞式 Axios 请求处理大段文本。
 - **状态机映射**: 前端必须精确捕获并映射后端的四个流状态事件：`running` (UI 展示骨架屏或打字机前置动效) / `finished` (UI 结算与卡片固化) / `failed` (UI 降级提示与重试逻辑) / `result` (增量或全量数据块)。
 - **技术栈选型**: 推荐基于原生 `fetch` API 结合 `ReadableStream` 进行二次封装，或者使用 `@microsoft/fetch-event-source` 处理复杂的流式通信。
+
+### 3. 错误处理规范：SSE 强校验熔断与前端防御 (Error Handling & Circuit Breaker Guardrails)
+1. **SSE 强校验熔断警示（后端已知隐患）**
+   - GoAgents 后端在解析 MindMap 结构时，对 `sub_topics` 字段执行强校验。
+   - 一旦 LLM 在任一分支返回 `sub_topics: []`（空数组），后端会在解码阶段触发阶段性失败：`err=decode mind map`。
+   - 该错误会导致 SSE 流被物理切断（熔断），前端可能只能收到中间态事件而无法收到完整结果。
+   - 该问题在后端契约未修复前，定义为“系统级已知风险”，前端不得将其误判为普通网络波动。
+
+2. **前端防御补丁（KnowledgeNode 视图层已部署）**
+   - `KnowledgeNode` 视图层必须在 `status === 'failed'` 时立即触发 UI 拦截：终止继续渲染不完整的 MindMap 结果，并给出明确失败反馈。
+   - 必须保留并触发 `fetchNodeData` 重试机制，允许用户在熔断后进行受控重拉，避免页面永久卡死在半成品状态。
+   - 对抗目标明确为“结构性幻觉”与“半流式脏数据污染”：宁可降级提示，也不渲染不可信结构。
+
+3. **战略优先级临时切换（业务开发 → 架构维护）**
+   - 在 GoAgents 空数组容错（`sub_topics`）完成前，知识点详情页相关迭代应以稳定性与契约对齐为第一优先级。
+   - 新功能开发必须服从“先恢复流式契约稳定，再扩展交互能力”的顺序，不得并行推进高风险功能。
 
 ---
 
@@ -263,6 +294,12 @@
     } as const;
     ```
 * **端口不可见**: 前端代码中严禁出现任何后端微服务的真实端口号（如 `:8080`, `:3001`）。端口映射完全由反向代理层管控，前端无需且不应感知。
+* **全域代理矩阵真理（当前生效）**: 路由映射必须严格遵循以下规约，不得擅自漂移：
+  - `/api/goagents` -> `8080`
+  - `/api/v1`（User/Vault）-> `3000`
+  - `/api/k2v` -> `8081`
+  - `/api/c2v` -> `8082`
+* **GoAgents CORS 穿透实战铁律**: 已知 `goagents` 服务（默认端口 `8080`）物理缺失 CORS 中间件。前端绝对禁止直接向 `http://localhost:8080` 发起跨域请求；开发环境必须在 `vite.config.ts` 中配置代理（如将 `/api/goagents` rewrite 并 proxy 到 `http://localhost:8080`）完成跨域穿透。
 
 ### 3. 跨领域数据交互规约 (Cross-Domain Data Interaction)
 * 当一个页面/组件需要同时消费多个微服务的数据时，必须在 UI 层（Page/Container 组件或自定义 Hook）中分别调用各领域的 Service 函数，再在本地进行数据组装。
@@ -275,9 +312,14 @@
    - 必须由 API 层提供专用拦截器函数（如 `fetchVideoBlobUrl` / `fetchK2VVideoBlobUrl` / `fetchC2VVideoBlobUrl`），以 `fetch` 拉取二进制流后转换为 `URL.createObjectURL(blob)`，再将本地对象 URL 交给 UI 层渲染。
    - UI 层职责仅限播放与交互，鉴权头拼装、流拉取与对象 URL 生成必须在 `src/api/` 层闭环。
 2. **异构载荷映射 (Heterogeneous Payload Mapping)**
-   - 后端 Schema 为扁平结构时，前端请求体必须执行字段展平映射，严禁在顶层发送 `profile_text` 这类历史兼容字段。
-   - 用户画像必须提取并映射 `age`、`language` 等核心字段；补充描述（`supplements` / `profile_summary`）必须并入 `extra_info` 后发送。
+   - 后端 Schema 为扁平结构时，前端请求体必须执行字段展平映射；字段名必须按目标引擎契约分流，严禁混发。
+   - **绝对铁律**：发往 Python 引擎（C2V/K2V）的补充画像必须映射为 `extra_info`；发往 Go 引擎（goagents，如 `/knowledge-explanation`, `/knowledge-quiz`）的补充画像必须严格映射为 `profile_text`。
+   - 用户画像必须提取并映射 `age`、`language` 等核心字段；补充描述（`supplements` / `profile_summary`）在进入适配层后按上述引擎契约落位。
    - 任何字段映射变更必须同步更新 TypeScript 类型定义与 Service 组装逻辑，禁止“UI 直拼字符串”绕过 API 层契约。
+3. **C2V/K2V 同源设计铁律 (Shared Design Doctrine)**
+   - C2V 与 K2V 必须共享同一套底层设计理念：补充画像摘要统一进入隔离字段 `extra_info`，严禁挤占或污染 Go 引擎的 `profile_text` 语义位。
+   - C2V 与 K2V 的请求必须使用独立 `X-API-Key` 鉴权通道，由 API 层统一注入，页面层禁止手拼 Header。
+   - C2V 与 K2V 路由入口必须挂载 `ImmersiveLayout` 的 16:9 沉浸视界，禁止回退到 Dashboard 80/20 分栏壳。
 
 ### 4. K2V 微服务接入规约 (K2V Gateway & Auth Contract)
 1. **端口防撞与代理分流**
@@ -297,7 +339,54 @@
      - `/api/k2v/api/v1/files/{filename}`
    - 未完成该拼接闭环时，严禁直接渲染裸文件名或本地路径到 `<video>`。
 
-### 5. 微服务边界与防线 (Backend Boundary & Fail-Fast Protocol)
+### 5. Rust 用户中心与金库接入规约 (UserProfile & Vault)
+1. **Vite Proxy 映射（本地 Rust 穿透）**
+   - 开发环境必须在 `vite.config.ts` 中新增并启用 `/api/v1`（或团队统一自定义前缀）到 `http://127.0.0.1:3000` 的代理规则，用于穿透 Rust 用户中心服务本地端口。
+   - 前端业务代码必须始终调用代理前缀，不得直接书写 `http://127.0.0.1:3000`，避免 CORS 与环境切换污染。
+   - 参考基线（示意）：
+     ```typescript
+     // vite.config.ts
+     server: {
+       proxy: {
+         '/api/v1': {
+           target: 'http://127.0.0.1:3000',
+           changeOrigin: true,
+         },
+       },
+     }
+     ```
+
+2. **JWT 鉴权闭环（登录/注册 -> Token 持久化 -> 全量注入）**
+   - 前端在调用 `POST /api/v1/auth/login` 或 `POST /api/v1/auth/register` 后，必须从响应壳 `data.token` 中提取 JWT。
+   - 提取后的 JWT 必须同时写入：
+     - 全局状态（如 Zustand `useUserProfile` / 专用 auth store），用于内存态即时鉴权；
+     - `localStorage`（建议键名：`authToken`），用于刷新后会话恢复。
+   - `src/api/_shared/request.ts` 拦截器必须在发往 UserProfile/Vault 微服务的全部请求头自动注入：
+     - `Authorization: Bearer <token>`
+   - 页面组件严禁手写 Header 拼接，鉴权注入职责必须收敛到 `_shared/request.ts` 的统一请求封装层。
+
+3. **强类型映射与 CamelCase 铁律（Rust JSON 契约对齐）**
+   - Rust 侧返回字段默认以驼峰命名输出，前端类型定义必须保持同构，不得擅自转为下划线命名。
+   - 示例字段：`errorId`、`needsReview`、`createdAt`、`updatedAt` 等必须按原样保留。
+   - `src/api/vault/types.ts` 与 `src/api/user/types.ts` 必须统一复用泛型响应壳：
+     ```typescript
+     export interface ApiEnvelope<T> {
+       code: number;
+       data: T;
+     }
+     ```
+   - 严禁使用 `any` 吞噬字段差异；新增字段必须同步更新类型并完成调用侧编译收敛。
+
+4. **写入接口对接清单（Vault Write Contract）**
+   - `POST /api/v1/vault/bookmarks`
+     - 语义：写入/新增收藏记录（来自知识点、讲解片段、工具产物等）。
+     - 前端要求：以强类型 Body DTO 发起请求，成功后按 `ApiEnvelope<BookmarkWriteResult>` 解析并回填列表状态。
+   - `POST /api/v1/vault/errors`
+     - 语义：写入/新增错题记录（题干、用户答案、正确答案、标签与溯源信息）。
+     - 前端要求：请求体字段与 `src/api/vault/types.ts` 严格一致，响应按 `ApiEnvelope<VaultErrorWriteResult>` 解包，不得直接操作裸 `Response`。
+   - 双写入接口必须纳入统一错误管线：401（Token 失效）触发登录态回收；4xx/5xx 走全局 Toast 与可重试提示。
+
+### 6. 微服务边界与防线 (Backend Boundary & Fail-Fast Protocol)
 1. **黑盒真理源原则**
    - 现有后端服务（含 GoAgents、K2V）属于经过调教的独立工程，前端必须将其视为不可干涉的“黑盒”真理源。
    - 前端 AI 执行端的唯一职责是：严格依据已知 API 契约组装 Payload、发起调用并消费响应。
@@ -310,13 +399,119 @@
    - 当后端返回容器级或系统级错误（如 `[Errno 2] No such file`、配置缺失、启动器崩溃）时，前端执行链必须立即阻断，不得继续叠加前端补丁尝试“绕过”。
    - 必须显式输出阻断结论，并强制挂起当前任务，等待人工进入后端工程目录进行物理排障后再恢复联调。
 
-### 6. 动态画像适配器模式 (Dynamic Profile Adapter Pattern)
+### 7. 动态画像适配器模式 (Dynamic Profile Adapter Pattern)
 - 动态水合 (Dynamic Hydration)：全局 Zustand Store 必须在后台隐式维护 `mastered_knowledge: string[]` 数组。在发起任何跨端 API 请求前，拦截器或 Adapter 层必须将该数组格式化并无缝拼接至用户画像的“补充信息”字段末尾（例：“...该用户已掌握：二分搜索, 冒泡排序”）。
 - 异构载荷适配 (Heterogeneous Payload Adaptation)：由于不同后端服务（GoAgents, K2V 等）接收画像的键名存在历史差异（如 `profile_text`, `user_info`, `context` 等），严禁在视图层硬编码拼装。必须在 `api/` 层针对每个微服务编写专用的 Adapter，在请求发出前完成字段映射与动态图谱的注入。
 
+### 8. GoAgents SSE 流式解析铁律 (SSE Parsing Protocol)
+- **结果事件真相源**: 所有 goagents 流式接口的最终结果均包裹在 `event: result` 中，前端只允许从该事件的 `data` 字段提取业务结果。
+- **强类型反序列化契约**: 针对 `/knowledge-explanation`，解析器必须将 `data` 严格反序列化为以下强类型结构，严禁使用 `any` 推断：
+  - `{ markdown: string, mind_map: { root_topic: string, main_branches: Array<{ title, summary, sub_topics }> } }`
+- **状态事件解耦**: `running`/`finished`/`failed` 仅用于 UI 状态机驱动，严禁承载最终业务数据解析职责。
+
 ---
 
-## 捌、 动态知识追踪与自适应引擎 (Dynamic Knowledge Tracing & Adaptive Engine)
+## 捌、 鉴权瀑布流与微服务防坑指南 (Auth Waterfall & Microservice Pitfall Playbook)
+本章用于固化本轮 UserProfile/Vault 战役的核心经验，作为后续所有成员接入鉴权与新微服务时的入场手册。凡涉及登录态、引导态、跨域代理、Rust 后端联调、接口探针验证等流程，必须先遵守本章。
+
+### 1. 鉴权瀑布流总纲 (Auth Waterfall Single Hub)
+1. **唯一枢纽**
+   - 全局鉴权路由枢纽必须设在 `src/views/Dashboard/index.tsx`，由该页面掌控阻断态与业务态的唯一分流。
+   - `App.tsx` 仅承担路由注册与 Layout 容器分发，不得承担鉴权业务判定，以避免“路由层 + 视图层双判定”导致状态竞争。
+
+2. **三级防线（硬顺序）**
+   - 第一门：`!isAuthenticated` 时，必须直接 `return <AuthModal />`。
+   - 第二门：`!isProfileComplete` 时，必须直接 `return <OnboardingModal />`。
+   - 第三门：仅当上述两门全部通过，才允许渲染 Dashboard 主体（含主控台卡片、侧边栏、业务操作区）。
+
+3. **执行形态（强制 Early Return）**
+   - 阻断态必须在组件顶层通过 `early return` 物理切断，不允许以 `z-index` 叠层、遮罩覆盖、`display: none` 隐藏等方式让主业务 DOM 同时挂载。
+   - 原因：伪隔离会让业务组件在“不可见状态”下继续执行副作用（请求、订阅、定时器），最终引发资源污染与行为穿透。
+
+4. **禁止 App 级 Onboarding 劫持**
+   - 严禁在 `App.tsx` 或高阶路由中引入 `/onboarding` 独立劫持与跳转分支。
+   - Onboarding 属于 Dashboard 内部阻断流程，不是站点级新路由。拆成顶级路由会引发回跳复杂度上升、鉴权态割裂、以及 SSR/CSR 切换时状态反复抖动。
+
+### 2. 幽灵状态防御 (Ghost State Defense)
+1. **故障复盘**
+   - 已发生真实事故：`useAuthStore` 从 `localStorage` 读取 token 时，若读到字符串 `'undefined'`，表达式 `Boolean('undefined')` 返回 `true`，导致未登录用户被误判为已登录（伪阳性）。
+   - 同类污染还包括 `'null'` 与空字符串 `''`，会让“是否持有有效 JWT”判断出现幻觉。
+
+2. **铁律**
+   - 布尔推导必须建立在“净化后 token”之上，严禁直接对原始 `localStorage` 返回值做 `Boolean(raw)`。
+   - 状态恢复流程必须先做字符串黑名单过滤，再做 `!!sanitizedToken` 推导。
+
+3. **推荐实现基线**
+   - 净化函数：
+     ```typescript
+     const GHOST_TOKEN_SET = new Set(['undefined', 'null', '']);
+
+     export function sanitizeStorageToken(raw: string | null): string {
+       if (!raw) return '';
+       const normalized = raw.trim();
+       return GHOST_TOKEN_SET.has(normalized) ? '' : normalized;
+     }
+     ```
+   - 恢复逻辑：
+     ```typescript
+     const token = sanitizeStorageToken(localStorage.getItem('authToken'));
+     if (!token) {
+       localStorage.removeItem('authToken');
+     }
+     const isAuthenticated = !!token;
+     ```
+
+4. **防线要求**
+   - 每次应用启动、登录恢复、手动刷新 token 后，均必须复用同一套净化逻辑，禁止复制粘贴多套判定代码。
+   - 若检测到幽灵状态，必须立即执行 `removeItem` 清库，避免脏值跨会话遗留。
+
+### 3. API 探针测试法 (Minimum Viable Probe)
+1. **适用场景**
+   - 对接新微服务或高不确定接口时（例如新接 Rust Axum 子域、新增 Vault 资源类型、接第三方引擎回调）。
+
+2. **禁止事项**
+   - 严禁“先堆重 UI 再盲调后端”。在链路不稳定前，复杂页面只会放大故障噪音，拖慢定位效率。
+
+3. **标准流程**
+   - 在主视图临时挂载最小按钮探针（例如 `ProbeLogin`、`ProbeAddFavorite`、`ProbeAddMistake`）。
+   - 探针必须打印全链路关键日志：入参、代理路径、请求头（脱敏后）、响应 code、响应体 data、异常栈。
+   - 验证链路顺序必须为：`UI Probe -> Vite Proxy -> Axios/FETCH -> 后端 Controller -> DB`。
+   - 仅当探针链路稳定后，方可进入正式 UI 铸造与交互态细节打磨。
+
+4. **交付门槛**
+   - 每条新增 API 至少保留一条可复用探针脚本或临时组件，直到联调完成并通过回归后再清理。
+   - 遇到 401/403/422/500 等关键状态码必须在探针期完成“分类处理策略”定义，禁止带着未知错误语义进入产品 UI。
+
+### 4. Rust/SQLx 编译期降维打击 (SQLx Macro Bypass)
+1. **问题背景**
+   - Rust Axum + SQLite 联调阶段，`cargo check` 会对 `sqlx::query!` 宏执行编译期数据库校验。
+   - 当环境缺失 `DATABASE_URL`（或本地 schema 不可达）时，编译直接被卡死在宏展开阶段，导致前端联调窗口被迫中断。
+
+2. **处置策略**
+   - 在未具备完整编译期数据库环境前，允许将宏调用从：
+     - `sqlx::query!(...)`
+   - 降级为运行期绑定：
+     - `sqlx::query(\"...\").bind(...).bind(...)`
+   - 目标是先打通编译与联调链路，再在条件成熟时回迁宏校验。
+
+3. **使用边界**
+   - 该策略只用于“联调期编译阻塞解锁”，不代表永久放弃类型校验。
+   - 一旦 CI 或本地开发环境补齐 `DATABASE_URL` 与 schema 管理，应评估是否回迁到 `query!` / `query_as!` 获得更强编译期安全。
+
+4. **与前端协作纪律**
+   - 前端在遇到此类后端编译期阻塞时，不得臆测 SQL 字段或自造后端补丁方案。
+   - 必须先记录“后端因 `DATABASE_URL` 缺失导致宏阻塞”的事实，再采用最小可行 API 探针验证接口可达性。
+
+### 5. 快速检查清单 (Onboarding Checklist for New Members)
+1. 是否将 Auth 枢纽固定在 `Dashboard/index.tsx`，并采用三级 Early Return？
+2. 是否完全移除 `App.tsx` 中的 `/onboarding` 劫持逻辑？
+3. 是否对 `localStorage` 读取值执行了幽灵状态净化与清库？
+4. 新 API 是否先走按钮探针，再进入复杂 UI？
+5. Rust/SQLx 是否因环境缺失触发宏阻塞，且已按策略降级并留档？
+
+---
+
+## 玖、 动态知识追踪与自适应引擎 (Dynamic Knowledge Tracing & Adaptive Engine)
 本项目已由静态表单驱动，全面升维为伴随用户生命周期迭代的动态学习系统。所有相关业务流必须严格遵循以下状态机规范：
 
 ### 1. 核心画像采集提权 (Profile Input Elevation)

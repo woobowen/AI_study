@@ -1,6 +1,6 @@
-import type { CSSProperties, FC } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateVideoSSE, getK2VVideoUrl } from '../../../api/k2v';
+import { fetchK2VVideoBlobUrl, generateVideoSSE } from '../../../api/k2v';
 import { useK2VStore } from '../../../store/useK2VStore';
 import { useUserStore } from '../../../store/useUserStore';
 
@@ -40,7 +40,24 @@ const K2V: FC = () => {
   const setInputText = useK2VStore((s) => s.setInputText);
   const setDifficulty = useK2VStore((s) => s.setDifficulty);
   const reset = useK2VStore((s) => s.reset);
-  const shouldShowVideoPlayer = Boolean(videoUrl) && !isGenerating;
+  const [historyList, setHistoryList] = useState<{ url: string; title: string }[]>([]);
+  const blobUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    return () => {
+      for (const url of blobUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      blobUrlsRef.current = [];
+    };
+  }, []);
+
+  const trackBlobUrl = (url: string): void => {
+    if (!url.startsWith('blob:')) return;
+    if (!blobUrlsRef.current.includes(url)) {
+      blobUrlsRef.current.push(url);
+    }
+  };
 
   /** 触发视频生成：串联输入校验、SSE 状态映射与结果落盘 */
   const handleGenerate = async (): Promise<void> => {
@@ -88,11 +105,18 @@ const K2V: FC = () => {
         onRunning: (message) => {
           useK2VStore.getState().setLoadingText(message || 'AI 正在生成视频...');
         },
-        onResult: (videoFile) => {
+        onResult: async (videoFile) => {
           clearInterval(progressTimer);
           useK2VStore.getState().setProgress(100);
           useK2VStore.getState().setLoadingText('渲染完成！');
-          useK2VStore.getState().setVideoUrl(videoFile ? getK2VVideoUrl(videoFile) : '');
+          if (videoFile) {
+            const blobUrl = await fetchK2VVideoBlobUrl(videoFile);
+            trackBlobUrl(blobUrl);
+            useK2VStore.getState().setVideoUrl(blobUrl);
+            setHistoryList((prev) => [{ url: blobUrl, title: knowledgePoint }, ...prev]);
+          } else {
+            useK2VStore.getState().setVideoUrl('');
+          }
           useK2VStore.getState().setGenerating(false);
         },
         onFinished: () => {
@@ -280,111 +304,127 @@ const K2V: FC = () => {
           }`}
         </style>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {shouldShowVideoPlayer ? (
-            <>
-              <video src={videoUrl} controls autoPlay className="w-full aspect-video rounded-xl shadow-lg" />
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder="请输入你想生成视频的知识点..."
+            style={{
+              width: '100%',
+              minHeight: 192,
+              border: 'none',
+              outline: 'none',
+              resize: 'vertical',
+              padding: 16,
+              borderRadius: 16,
+              background: 'var(--bg-canvas)',
+              color: 'var(--text-primary)',
+              boxShadow: 'var(--shadow-inner)',
+              boxSizing: 'border-box',
+              fontSize: 16,
+              lineHeight: '24px',
+            }}
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {[
+              { label: '入门', value: 'simple' as const },
+              { label: '中等', value: 'medium' as const },
+              { label: '专家', value: 'hard' as const },
+            ].map((item) => {
+              // 使用显式选中态分支，避免白底白字与边框冲突
+              const isActive = difficulty === item.value;
+              return (
                 <button
+                  key={item.value}
                   type="button"
-                  onClick={handleReset}
+                  onClick={() => setDifficulty(item.value)}
                   style={{
-                    border: 'none',
-                    borderRadius: 16,
                     padding: '8px 24px',
+                    borderRadius: 9999,
                     cursor: 'pointer',
-                    background: 'transparent',
-                    color: 'var(--text-heading, #BE8944)',
-                    fontSize: 16,
+                    fontSize: 14,
                     lineHeight: '24px',
                     fontWeight: 600,
+                    borderWidth: 1,
+                    borderStyle: 'solid',
+                    // 选中态强制暖金底 + 白字；未选中态保持透明底 + 轻量边框
+                    background: isActive ? 'var(--text-heading, #BE8944)' : 'transparent',
+                    color: isActive ? '#FFFFFF' : 'var(--text-primary, #2C1608)',
+                    borderColor: isActive ? 'transparent' : 'var(--code-border, #e4c8a6)',
+                    boxShadow: isActive ? 'var(--shadow-hover)' : 'var(--shadow-soft)',
                   }}
                 >
-                  ✨ 再次生成新视频
+                  {item.label}
                 </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="请输入你想生成视频的知识点..."
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                border: 'none',
+                borderRadius: 16,
+                padding: '8px 24px',
+                cursor: 'pointer',
+                background: 'transparent',
+                color: 'var(--text-heading, #BE8944)',
+                fontSize: 16,
+                lineHeight: '24px',
+                fontWeight: 600,
+              }}
+            >
+              ✨ 再次生成新视频
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleGenerate()}
+              disabled={isGenerating}
+              style={{
+                border: 'none',
+                borderRadius: 24,
+                padding: '16px 32px',
+                cursor: isGenerating ? 'not-allowed' : 'pointer',
+                opacity: isGenerating ? 0.75 : 1,
+                background: 'var(--text-heading, #BE8944)',
+                color: '#FFFFFF',
+                fontSize: 20,
+                lineHeight: '32px',
+                fontWeight: 700,
+                boxShadow: 'var(--shadow-hover)',
+              }}
+            >
+              <span>{isGenerating ? '生成中...' : '✨ 在线生成'}</span>
+            </button>
+          </div>
+
+          {videoUrl && (
+            <div
+              style={{
+                marginTop: '40px',
+                aspectRatio: '16/9',
+                width: '100%',
+                backgroundColor: '#000000',
+                borderRadius: '24px',
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-soft)',
+              }}
+            >
+              <video
+                src={videoUrl}
+                controls
+                autoPlay
                 style={{
+                  objectFit: 'contain',
                   width: '100%',
-                  minHeight: 192,
-                  border: 'none',
-                  outline: 'none',
-                  resize: 'vertical',
-                  padding: 16,
-                  borderRadius: 16,
-                  background: 'var(--bg-canvas)',
-                  color: 'var(--text-primary)',
-                  boxShadow: 'var(--shadow-inner)',
-                  boxSizing: 'border-box',
-                  fontSize: 16,
-                  lineHeight: '24px',
+                  height: '100%',
                 }}
               />
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                {[
-                  { label: '入门', value: 'simple' as const },
-                  { label: '中等', value: 'medium' as const },
-                  { label: '专家', value: 'hard' as const },
-                ].map((item) => {
-                  // 使用显式选中态分支，避免白底白字与边框冲突
-                  const isActive = difficulty === item.value;
-                  return (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => setDifficulty(item.value)}
-                      style={{
-                        padding: '8px 24px',
-                        borderRadius: 9999,
-                        cursor: 'pointer',
-                        fontSize: 14,
-                        lineHeight: '24px',
-                        fontWeight: 600,
-                        borderWidth: 1,
-                        borderStyle: 'solid',
-                        // 选中态强制暖金底 + 白字；未选中态保持透明底 + 轻量边框
-                        background: isActive ? 'var(--text-heading, #BE8944)' : 'transparent',
-                        color: isActive ? '#FFFFFF' : 'var(--text-primary, #2C1608)',
-                        borderColor: isActive ? 'transparent' : 'var(--code-border, #e4c8a6)',
-                        boxShadow: isActive ? 'var(--shadow-hover)' : 'var(--shadow-soft)',
-                      }}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => void handleGenerate()}
-                  disabled={isGenerating}
-                  style={{
-                    border: 'none',
-                    borderRadius: 24,
-                    padding: '16px 32px',
-                    cursor: isGenerating ? 'not-allowed' : 'pointer',
-                    opacity: isGenerating ? 0.75 : 1,
-                    background: 'var(--text-heading, #BE8944)',
-                    color: '#FFFFFF',
-                    fontSize: 20,
-                    lineHeight: '32px',
-                    fontWeight: 700,
-                    boxShadow: 'var(--shadow-hover)',
-                  }}
-                >
-                  <span>{isGenerating ? '生成中...' : '✨ 在线生成'}</span>
-                </button>
-              </div>
-            </>
+            </div>
           )}
+
         </div>
 
         {/* 生成态微光遮罩：固定挂载在控制台内部，不影响页面其他区域 */}
@@ -431,10 +471,23 @@ const K2V: FC = () => {
               >
                 {loadingText}
               </p>
-              <div className="w-64 h-2 bg-gray-200 rounded-full mt-4">
+              <div
+                style={{
+                  width: 256,
+                  height: 8,
+                  background: '#e5e7eb',
+                  borderRadius: 9999,
+                  marginTop: 16,
+                }}
+              >
                 <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                  style={{ width: `${progress}%` }}
+                  style={{
+                    height: '100%',
+                    background: '#3b82f6',
+                    borderRadius: 9999,
+                    width: `${progress}%`,
+                    transition: 'width 0.5s',
+                  }}
                 />
               </div>
               <p
@@ -452,6 +505,73 @@ const K2V: FC = () => {
           </div>
         )}
       </section>
+
+      {historyList.length > 0 && (
+        <section
+          style={{
+            marginTop: '64px',
+            width: '100%',
+          }}
+        >
+          <h3
+            style={{
+              fontSize: '18px',
+              color: 'var(--text-heading)',
+              marginBottom: '24px',
+            }}
+          >
+            本次生成历史
+          </h3>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '24px',
+            }}
+          >
+            {historyList.map((item, index) => (
+              <div
+                key={index}
+                onClick={() => {
+                  useK2VStore.getState().setVideoUrl(item.url);
+                  setInputText(item.title);
+                }}
+                style={{
+                  backgroundColor: 'var(--bg-canvas)',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  boxShadow: 'var(--shadow-soft)',
+                  cursor: 'pointer',
+                }}
+              >
+                <video
+                  src={item.url}
+                  muted
+                  style={{
+                    width: '100%',
+                    aspectRatio: '16/9',
+                    objectFit: 'cover',
+                  }}
+                />
+                <div style={{ padding: '16px' }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 14,
+                      lineHeight: '20px',
+                      color: 'var(--text-primary)',
+                      fontWeight: 600,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {item.title}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

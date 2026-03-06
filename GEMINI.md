@@ -11,6 +11,7 @@
 4. **全中文回复**: 无论用户的 Prompt 语言为何，代码解释、架构分析、日常交互强制使用中文（简体）。
 5. **JSON 纯净原则**: 🛑 极其重要：标准的 `.json` 文件内严禁包含任何形式的注释 (`//` 或 `/* */`)，否则将导致解析崩溃！如必须写注释，请修改为 `.ts`/`.py` 配置或使用 `.jsonc`。
 6. **后端零猜测铁律**: 前端仅作为调用方，严禁对后端服务（如 GoAgents、Knowledge2Video 的内部机制、端口、配置文件）进行任何假设、猜测或自主生成后端代码。遇到前后端不匹配或后端底层报错，必须立刻停止工作并明确告知用户，交由用户前往后端代码库进行物理查证。
+7. **配置文件增量防线 (Incremental Config Law)**: 在修改 `vite.config.ts`、`src/config/api.ts` 或路由表等系统级胶水层文件时，严禁使用“全盘覆写”或“主观删减”。必须严格执行“最小化增量追加 (Append Only)”，绝对禁止删除或覆盖任何既有的代理规则或路由配置，否则将导致毁灭性的网关断层。
 
 ---
 
@@ -57,11 +58,17 @@
 ## 肆、 Project Warm-Parchment 专属业务铁律 (Domain Rules)
 1. **在线 IDE 降级防御**: 若遇到涉及“在线编程平台 (IDE)”的开发，必须检查 `ENABLE_ONLINE_IDE` 开关。在开启前，强制将其渲染为 Disabled 状态（扫描线 + Badge + pointer-events: none），或在点击时实施前端事件劫持 (`e.preventDefault()`) 并触发全局 Toast，严禁执行路由跳转。
 2. **AI 侧边栏保活**: 在主控台 (`/dashboard`) 与下钻页 (`/node/:id`) 间切换时，由于其共享 80/20 分栏 Layout，AI Chat 组件严禁被卸载，必须通过顶层状态管理保持对话上下文不中断。
+3. **节点状态机铁律**: 开发 `/node/:nodeId` 视图时，必须将底部的测试与分发模块（Card 5）视为独立的状态机组件。严禁将这部分复杂的渲染逻辑与上方的静态知识展示面条式地混写在一起，必须解耦。
 ## 伍、 数据流与接口铁律 (Data Flow & API Protocol)
 1. **用户画像强制耦合**: 在编写任何涉及调用后端 LLM 接口（如生成学习计划、学前测、知识点讲解）的 Service 函数时，AI 必须自动从全局 Store (Zustand) 获取用户画像上下文并合并到 Request Payload 中。
    🚨 新增红线：在组装 Payload 之前，必须从 Store 中提取已掌握的知识点数组 (mastered_knowledge)，将其动态格式化并追加到画像的补充信息字段末尾。
 2. **SSE 流式消费**: 在生成 API 请求代码时，遇到生成类接口，强制使用 Fetch API 处理 Server-Sent Events 流，并暴露出 `onMessage`, `onError`, `onComplete` 等回调函数供 UI 层使用，严禁将其当作普通 Promise 处理。
 3. **媒体鉴权穿透铁律**: 前端任何 `<video>` 或 `<audio>` 标签，若目标资源受后端的 `X-API-Key` 保护，严禁直接绑定网络 URL 字符串。必须在 API 层封装专门的 Fetch Blob 转换函数，通过浏览器内存对象 (`URL.createObjectURL`) 安全渲染。
+4. **环境对抗铁律**: 永远不要假设所有本地微服务都配置了完美的 CORS。当遇到后端缺乏跨域支持时，前端框架师的首选动作是配置开发环境代理 (`vite proxy`)，而不是去盲目修改不属于当前战役边界的后端工程。
+5. **多引擎异构响应防御**: 前端 API 层必须严格区分不同后端的响应外壳。GoAgents 使用 SSE 事件流，而 UserProfile（Rust）使用标准的 `{code, data}` JSON 外壳。严禁使用单一的 Response 泛型强套所有微服务。
+6. **渲染管线排他律 (Early Return Pipeline)**: 在处理 Auth（鉴权）与 Onboarding（前置引导）等核心阻断态时，严禁使用 `z-index` 叠层或 `display: none` 的“视觉隔离伪方案”。必须在 React 组件顶层使用 `early return` 进行物理级渲染切断，确保阻断态与主业务视图不会同帧并存。
+7. **本地存储类型净化律 (Storage Sanitization)**: 从 `localStorage` 读取鉴权与引导状态时，严禁直接作为 Boolean 判定。必须显式拦截并清除字符串幽灵状态（`'null'`、`'undefined'`、`''`），统一在净化后再进行布尔推导，防止 `Boolean('undefined') === true` 导致伪阳性鉴权。
+8. **异构引擎组装意识**: 在向后端发送 Payload 时，必须先判定目标引擎类型。若是 Go 引擎（GoAgents），画像字段必须扁平化映射为 `profile_text`；若是 Python 引擎（K2V/C2V），必须映射为 `extra_info`。严禁盲目复制组装逻辑。
 
 ---
 

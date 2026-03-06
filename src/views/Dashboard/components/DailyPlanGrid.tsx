@@ -1,4 +1,5 @@
 import type { CSSProperties, FC } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStudyPlan } from '../../../store/useStudyPlan';
 
 /** 网格容器：严格 4 列 + 180px 自动行高（项目架构红线） */
@@ -21,10 +22,10 @@ const cardBaseStyle: CSSProperties = {
  * 渲染策略：加载骨架 -> 实际阶段 -> 空状态
  */
 const DailyPlanGrid: FC = () => {
+  const navigate = useNavigate();
   const planData = useStudyPlan((s) => s.planData);
   const isLoading = useStudyPlan((s) => s.isLoading);
   const learnedPoints = useStudyPlan((s) => s.learnedPoints);
-  const markPointLearned = useStudyPlan((s) => s.markPointLearned);
 
   if (isLoading) {
     return (
@@ -153,17 +154,11 @@ const DailyPlanGrid: FC = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        const pointKey = `${index}-${idx}`;
-                        if (!learnedPoints[pointKey]) {
-                          alert(`即将跳转到学习页面: ${point}`);
-                          markPointLearned(index, idx, true);
-                        }
-                      }}
+                      onClick={() => navigate('/node/' + encodeURIComponent(point))}
                       style={{
                         border: 'none',
                         background: 'transparent',
-                        cursor: learnedPoints[`${index}-${idx}`] ? 'default' : 'pointer',
+                        cursor: 'pointer',
                         fontSize: 14,
                         lineHeight: '20px',
                         padding: 0,

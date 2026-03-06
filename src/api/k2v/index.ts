@@ -298,6 +298,24 @@ export function getK2VVideoUrl(filename: string): string {
   return `${API_PREFIX.K2V}/api/v1/files/${filename}`;
 }
 
+/** 通过鉴权请求视频二进制并转换为本地 Blob URL，供 <video> 安全播放 */
+export async function fetchK2VVideoBlobUrl(filename: string): Promise<string> {
+  const response = await fetch(getK2VVideoUrl(filename), {
+    method: 'GET',
+    headers: {
+      'X-API-Key': K2V_API_KEY,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`K2V 视频下载失败: HTTP ${response.status}${errorText ? ` - ${errorText}` : ''}`);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
 export type {
   GenerateVideoPayload,
   K2VDifficulty,

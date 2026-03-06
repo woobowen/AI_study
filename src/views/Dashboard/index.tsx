@@ -1,21 +1,40 @@
 import type { FC } from 'react';
 import { useUserStore } from '../../store/useUserStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import AuthModal from '../../components/AuthModal';
 import HeroSearch from './components/HeroSearch';
 import DailyPlanGrid from './components/DailyPlanGrid';
 import FeatureMatrix from './components/FeatureMatrix';
 import OnboardingModal from './components/OnboardingModal';
+import PretestBoard from './components/PretestBoard';
 
 /**
  * Dashboard 主控台视图
  * 职责：左侧内容区纵向布局容器，组合 HeroSearch、DailyPlanGrid 与 FeatureMatrix。
- * 当用户尚未完成画像引导（hasStudyPlan === false）时，
- * 在整个 Dashboard 上方渲染 OnboardingModal 全屏拦截层，
- * 强制用户先录入基础画像后才能操作主控台。
+ * 渲染管线采用四段式绝对排他拦截：
+ * [鉴权] -> [画像] -> [学前测] -> [主控台]
  */
 const Dashboard: FC = () => {
-  /** 是否已完成引导并生成学习计划 */
-  const hasStudyPlan = useUserStore((s) => s.hasStudyPlan);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isProfileComplete = useUserStore((s) => s.isProfileComplete);
+  const isPretestComplete = useUserStore((s) => s.isPretestComplete);
 
+  // 拦截层 1：未登录
+  if (!isAuthenticated) {
+    return <AuthModal />;
+  }
+
+  // 拦截层 2：已登录，未完善画像
+  if (!isProfileComplete) {
+    return <OnboardingModal />;
+  }
+
+  // 拦截层 3：画像已完善，但未完成学前测
+  if (!isPretestComplete) {
+    return <PretestBoard />;
+  }
+
+  // 拦截层 4：全流程通关，放行主界面
   return (
     <div
       style={{
@@ -30,9 +49,6 @@ const Dashboard: FC = () => {
         minHeight: 'calc(100vh + 120px)',
       }}
     >
-      {/* 未完成画像引导时，渲染全屏拦截弹窗 */}
-      {!hasStudyPlan && <OnboardingModal />}
-
       <HeroSearch />
       <DailyPlanGrid />
       <FeatureMatrix />
