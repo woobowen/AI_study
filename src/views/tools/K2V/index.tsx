@@ -85,6 +85,7 @@ const K2V: FC = () => {
       duration: 5,
       extra_info: profileSummary || undefined,
     };
+    let progressTimer: ReturnType<typeof setInterval> | null = null;
 
     try {
       // 发起真实请求前，先设置初始生成态
@@ -94,7 +95,7 @@ const K2V: FC = () => {
       useK2VStore.getState().setLoadingText('正在唤醒后端算力引擎...');
 
       // 智能虚拟进度引擎：每 3 秒随机推进 1~3%，并强制封顶 95%
-      const progressTimer: ReturnType<typeof setInterval> = setInterval(() => {
+      progressTimer = setInterval(() => {
         const current = useK2VStore.getState().progress;
         if (current >= 95) return;
         const delta = Math.floor(Math.random() * 3) + 1;
@@ -106,7 +107,10 @@ const K2V: FC = () => {
           useK2VStore.getState().setLoadingText(message || 'AI 正在生成视频...');
         },
         onResult: async (videoFile) => {
-          clearInterval(progressTimer);
+          if (progressTimer) {
+            clearInterval(progressTimer);
+            progressTimer = null;
+          }
           useK2VStore.getState().setProgress(100);
           useK2VStore.getState().setLoadingText('渲染完成！');
           if (videoFile) {
@@ -124,20 +128,19 @@ const K2V: FC = () => {
           useK2VStore.getState().setLoadingText('正在回传视频资源...');
         },
         onFailed: (message) => {
-          clearInterval(progressTimer);
-          useK2VStore.getState().setLoadingText(message || '视频生成失败');
-          useK2VStore.getState().setGenerating(false);
+          useK2VStore.getState().setLoadingText(`[警告] ${message || '视频生成受阻，正在重试...'}`);
         },
         onError: (message) => {
-          clearInterval(progressTimer);
-          useK2VStore.getState().setLoadingText(message || '生成过程出现异常');
-          useK2VStore.getState().setGenerating(false);
+          useK2VStore.getState().setLoadingText(`[警告] ${message || '视频生成异常，正在重试...'}`);
         },
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : '生成过程出现异常';
+      useK2VStore.getState().setLoadingText('网络连接已断开');
+    } finally {
+      if (progressTimer) {
+        clearInterval(progressTimer);
+      }
       useK2VStore.getState().setGenerating(false);
-      alert(message);
     }
   };
 
@@ -231,62 +234,47 @@ const K2V: FC = () => {
             gap: 32,
           }}
         >
-          <div
-            style={{
-              borderRadius: 20,
-              background: 'var(--bg-canvas)',
-              boxShadow: 'var(--shadow-soft)',
-              padding: 16,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div
+          {[
+            { title: '二分查找核心思想讲解', url: '/mock_media/二分查找.mp4' },
+            { title: 'Python 数据类型（武侠版）', url: '/mock_media/python的数据类型（武侠小说版本）.mp4' },
+            { title: '冒泡排序算法动态图解', url: '/mock_media/冒泡排序.mp4' },
+          ].map((item) => (
+            <article
+              key={item.title}
               style={{
-                width: '100%',
-                aspectRatio: '16 / 9',
-                borderRadius: 16,
-                background: '#f6ebd7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                borderRadius: 20,
+                background: 'var(--bg-canvas)',
+                boxShadow: 'var(--shadow-soft)',
+                padding: 16,
+                boxSizing: 'border-box',
               }}
             >
-              <div
+              <video
+                src={item.url}
+                muted
+                controls
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  background: 'rgba(190, 137, 68, 0.2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width: '100%',
+                  aspectRatio: '16 / 9',
+                  borderRadius: 16,
+                  backgroundColor: '#000000',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+              <p
+                style={{
+                  margin: '16px 0 0 0',
+                  color: 'var(--text-primary)',
+                  fontSize: 16,
+                  lineHeight: '24px',
+                  fontWeight: 600,
                 }}
               >
-                <div
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderTop: '10px solid transparent',
-                    borderBottom: '10px solid transparent',
-                    borderLeft: '16px solid var(--text-heading)',
-                    marginLeft: 4,
-                  }}
-                />
-              </div>
-            </div>
-
-            <p
-              style={{
-                margin: '16px 0 0 0',
-                color: 'var(--text-primary)',
-                fontSize: 16,
-                lineHeight: '24px',
-                fontWeight: 500,
-              }}
-            >
-              二叉树数据结构基础讲解 (MOCK 推荐占位)
-            </p>
-          </div>
+                {item.title}
+              </p>
+            </article>
+          ))}
         </div>
       </div>
 
@@ -396,7 +384,7 @@ const K2V: FC = () => {
                 boxShadow: 'var(--shadow-hover)',
               }}
             >
-              <span>{isGenerating ? '生成中...' : '✨ 在线生成'}</span>
+              <span>{isGenerating ? `${loadingText} (${progress}%)` : '✨ 在线生成'}</span>
             </button>
           </div>
 
@@ -426,84 +414,6 @@ const K2V: FC = () => {
           )}
 
         </div>
-
-        {/* 生成态微光遮罩：固定挂载在控制台内部，不影响页面其他区域 */}
-        {isGenerating && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'rgba(255, 253, 244, 0.8)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 10,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 16,
-              }}
-            >
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  border: '4px solid rgba(190, 137, 68, 0.24)',
-                  borderTopColor: 'var(--text-heading, #BE8944)',
-                  animation: 'k2v-console-spin 1s linear infinite',
-                }}
-              />
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 16,
-                  lineHeight: '24px',
-                  color: 'var(--text-heading, #BE8944)',
-                  fontWeight: 500,
-                }}
-              >
-                {loadingText}
-              </p>
-              <div
-                style={{
-                  width: 256,
-                  height: 8,
-                  background: '#e5e7eb',
-                  borderRadius: 9999,
-                  marginTop: 16,
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    background: '#3b82f6',
-                    borderRadius: 9999,
-                    width: `${progress}%`,
-                    transition: 'width 0.5s',
-                  }}
-                />
-              </div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 14,
-                  lineHeight: '20px',
-                  color: 'var(--text-primary)',
-                  fontWeight: 500,
-                }}
-              >
-                {progress}%
-              </p>
-            </div>
-          </div>
-        )}
       </section>
 
       {historyList.length > 0 && (

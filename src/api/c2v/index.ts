@@ -157,14 +157,12 @@ export async function generateC2VVideo(
           callbacks.onFinished?.(message || '视频生成完成');
           break;
         case 'failed': {
-          const failedMessage = message || '视频生成失败';
-          callbacks.onFailed?.(failedMessage);
-          throw new Error(failedMessage);
+          callbacks.onFailed?.(message || '视频生成受阻，重试中...');
+          break;
         }
         case 'error': {
-          const errorMessage = message || '视频生成异常';
-          callbacks.onError?.(errorMessage);
-          throw new Error(errorMessage);
+          callbacks.onError?.(message || '视频生成异常，重试中...');
+          break;
         }
         default:
           if (message) {

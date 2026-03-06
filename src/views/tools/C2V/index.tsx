@@ -83,16 +83,15 @@ const C2V: FC = () => {
             setProgressMsg(message || '视频生成完成');
           },
           onFailed: (message) => {
-            setProgressMsg(message || '视频生成失败');
+            setProgressMsg(`[警告] ${message || '视频生成受阻，正在重试...'}`);
           },
           onError: (message) => {
-            setProgressMsg(message || '生成过程出现异常');
+            setProgressMsg(`[警告] ${message || '视频生成异常，正在重试...'}`);
           },
         },
       );
-    } catch (error: unknown) {
-      const errorMsg = error instanceof Error ? error.message : '生成失败，请稍后重试';
-      setProgressMsg(errorMsg);
+    } catch (_error: unknown) {
+      setProgressMsg('网络连接已断开');
     } finally {
       setIsGenerating(false);
     }
@@ -213,12 +212,12 @@ const C2V: FC = () => {
           }}
         >
           {[
-            'LeetCode 104. 二叉树的最大深度',
-            'LeetCode 206. 反转链表',
-            'LeetCode 70. 爬楼梯',
-          ].map((problemName) => (
+            { title: '合并区间 (Merge Intervals)', url: '/mock_media/合并区间.mp4' },
+            { title: '最长回文子串 - DP解法', url: '/mock_media/最长回文子串-DP解法.mp4' },
+            { title: '正则表达式匹配', url: '/mock_media/正则表达式匹配.mp4' },
+          ].map((item) => (
             <article
-              key={problemName}
+              key={item.title}
               style={{
                 borderRadius: 24,
                 backgroundColor: 'var(--bg-canvas, #FFFDF4)',
@@ -227,12 +226,17 @@ const C2V: FC = () => {
                 boxSizing: 'border-box',
               }}
             >
-              <div
+              <video
+                src={item.url}
+                muted
+                controls
                 style={{
                   width: '100%',
                   aspectRatio: '16 / 9',
                   borderRadius: 16,
-                  backgroundColor: '#F6EBD7',
+                  objectFit: 'cover',
+                  backgroundColor: '#000000',
+                  display: 'block',
                 }}
               />
               <p
@@ -244,7 +248,7 @@ const C2V: FC = () => {
                   color: 'var(--text-primary)',
                 }}
               >
-                题目名称：{problemName}
+                {item.title}
               </p>
             </article>
           ))}

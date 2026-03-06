@@ -94,6 +94,7 @@
 * **`api/` 隔离红线**: 每个微服务子目录（`goagents/`, `user/`, `vault/`）内的 Service 函数严禁跨目录 import 其他领域的 Service。跨领域数据编排只允许在 `store/` 或 `views/` 层完成。
 * **`layouts/` vs `views/` 边界**: Layout 只负责骨架分栏与常驻组件挂载，严禁包含任何业务逻辑；View 只负责页面级数据获取与子组件编排，严禁定义全局样式。
 * **`components/` 纯净性**: 组件必须是无业务副作用的纯 UI 单元，数据一律通过 Props 或 Store 注入，严禁在组件内部直接调用 `api/` 层。
+* **大体积媒体资产直出铁律**: 所有用于推荐、占位或展示的大型视频/3D模型，必须存放于 `public/mock_media/` 中。前端严禁通过 import 引入媒体导致 Webpack/Vite 编译拥堵，必须统一使用绝对路径（如 `src="/mock_media/xxx.mp4"`）利用本地服务器直出。
 
 ---
 
@@ -408,6 +409,25 @@
 - **强类型反序列化契约**: 针对 `/knowledge-explanation`，解析器必须将 `data` 严格反序列化为以下强类型结构，严禁使用 `any` 推断：
   - `{ markdown: string, mind_map: { root_topic: string, main_branches: Array<{ title, summary, sub_topics }> } }`
 - **状态事件解耦**: `running`/`finished`/`failed` 仅用于 UI 状态机驱动，严禁承载最终业务数据解析职责。
+
+### 8. AIGC 物理资产跨维提取法则 (Docker Artifact Salvage Protocol)
+当遭遇极端的网络熔断（如 30 分钟以上的高压生成导致前端掉线），但后端 Docker 容器已成功渲染视频时，严禁判定为“生成失败”并重跑算力。必须执行以下标准的物理打捞程序：
+
+1. **高维探测 (Internal Scout)**:
+   利用 `docker exec` 进入执行流转的 worker 容器（如 `c2v-worker` 或 `k2v-worker`）进行文件定位：
+   ```bash
+   docker exec <container_name> find /app -name "*.mp4"
+   ```
+
+2. **保真提取 (Fidelity Extraction)**:
+   定位到目标路径（如 `/app/data/outputs/videos/[hash].mp4`）后，通过 `docker cp` 将目标文件强行拷贝至宿主机。
+
+3. **绝对红线 (Hash Preservation Redline)**:
+   提取时必须 100% 保持视频原本的 Hash 文件名（如 `436fab...c1c.mp4`）。严禁在提取时将其重命名为 `c2v_video.mp4` 或 `test.mp4` 等无语义名称，以此确保跨端数据溯源的绝对唯一性与哈希一致性。
+
+   ```bash
+   docker cp c2v-worker:/app/data/outputs/videos/436fab079f75b5315f1189887038fd0faa6e9e5c2376778278bc5bc011a44c1c.mp4 ./436fab079f75b5315f1189887038fd0faa6e9e5c2376778278bc5bc011a44c1c.mp4
+   ```
 
 ---
 

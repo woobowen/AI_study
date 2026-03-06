@@ -68,7 +68,8 @@
 5. **多引擎异构响应防御**: 前端 API 层必须严格区分不同后端的响应外壳。GoAgents 使用 SSE 事件流，而 UserProfile（Rust）使用标准的 `{code, data}` JSON 外壳。严禁使用单一的 Response 泛型强套所有微服务。
 6. **渲染管线排他律 (Early Return Pipeline)**: 在处理 Auth（鉴权）与 Onboarding（前置引导）等核心阻断态时，严禁使用 `z-index` 叠层或 `display: none` 的“视觉隔离伪方案”。必须在 React 组件顶层使用 `early return` 进行物理级渲染切断，确保阻断态与主业务视图不会同帧并存。
 7. **本地存储类型净化律 (Storage Sanitization)**: 从 `localStorage` 读取鉴权与引导状态时，严禁直接作为 Boolean 判定。必须显式拦截并清除字符串幽灵状态（`'null'`、`'undefined'`、`''`），统一在净化后再进行布尔推导，防止 `Boolean('undefined') === true` 导致伪阳性鉴权。
-8. **异构引擎组装意识**: 在向后端发送 Payload 时，必须先判定目标引擎类型。若是 Go 引擎（GoAgents），画像字段必须扁平化映射为 `profile_text`；若是 Python 引擎（K2V/C2V），必须映射为 `extra_info`。严禁盲目复制组装逻辑。
+8. **长连接状态机韧性 (Hypersensitive Circuit Breaker Defense)**: 在处理耗时极长（如30分钟以上）的 SSE 生成任务时，前端严禁对非致命事件（如 failed/error 发出的 503 重试警告）过度反应。绝对禁止在 onError/onFailed 回调中将 isGenerating 设为 false 或抛出 Error 切断 Fetch 流。只有在收到最终的 result 事件或外层 catch 捕获到真实的物理断网时，才允许释放 UI 锁定态。
+9. **异构引擎组装意识**: 在向后端发送 Payload 时，必须先判定目标引擎类型。若是 Go 引擎（GoAgents），画像字段必须扁平化映射为 `profile_text`；若是 Python 引擎（K2V/C2V），必须映射为 `extra_info`。严禁盲目复制组装逻辑。
 
 ---
 
