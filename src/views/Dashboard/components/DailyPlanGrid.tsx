@@ -1,6 +1,7 @@
 import type { CSSProperties, FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStudyPlan } from '../../../store/useStudyPlan';
+import { useUserStore } from '../../../store/useUserStore';
 
 /** 网格容器：严格 4 列 + 180px 自动行高（项目架构红线） */
 const gridStyle: CSSProperties = {
@@ -25,7 +26,8 @@ const DailyPlanGrid: FC = () => {
   const navigate = useNavigate();
   const planData = useStudyPlan((s) => s.planData);
   const isLoading = useStudyPlan((s) => s.isLoading);
-  const learnedPoints = useStudyPlan((s) => s.learnedPoints);
+  const masteredKnowledge = useUserStore((state) => state.mastered_knowledge) || [];
+  const markKnowledgeMastered = useUserStore((state) => state.markKnowledgeMastered);
 
   if (isLoading) {
     return (
@@ -133,10 +135,10 @@ const DailyPlanGrid: FC = () => {
                           height: 12,
                           borderRadius: '50%',
                           flexShrink: 0,
-                          background: learnedPoints[`${index}-${idx}`]
+                          background: masteredKnowledge.includes(point)
                             ? 'var(--color-success-bg)'
                             : 'transparent',
-                          border: learnedPoints[`${index}-${idx}`]
+                          border: masteredKnowledge.includes(point)
                             ? '1px solid var(--color-success-text, #478211)'
                             : '1px solid #e0e0e0',
                         }}
@@ -154,7 +156,10 @@ const DailyPlanGrid: FC = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate('/node/' + encodeURIComponent(point))}
+                      onClick={() => {
+                        markKnowledgeMastered(point);
+                        navigate('/node/' + encodeURIComponent(point));
+                      }}
                       style={{
                         border: 'none',
                         background: 'transparent',
@@ -163,12 +168,12 @@ const DailyPlanGrid: FC = () => {
                         lineHeight: '20px',
                         padding: 0,
                         marginLeft: 16,
-                        color: learnedPoints[`${index}-${idx}`]
+                        color: masteredKnowledge.includes(point)
                           ? 'var(--text-secondary, #7a6a5a)'
                           : 'var(--text-heading)',
                       }}
                     >
-                      {learnedPoints[`${index}-${idx}`] ? '已学习' : '去学习'}
+                      {masteredKnowledge.includes(point) ? '已学习' : '去学习'}
                     </button>
                   </div>
                 ))

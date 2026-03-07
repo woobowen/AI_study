@@ -29,6 +29,11 @@
 ### 3. 闭环测试与修复 (Implement and Test Closure)
 * 代码编写完成后，若用户提供了 Traceback 报错日志，AI 必须直接摄入该日志，精准定位并进行自动化修复，直至测试通过。
 
+## 三、 编码底层准则
+### 4. 状态机纯洁性铁律 (State Purity Protocol)
+- **严禁状态孤岛**：对于跨页面流转的核心业务数据（如学习进度、掌握状态），严禁在 React 组件内部使用 `useState` 建立局部状态字典。
+- **全局大脑**：必须通过 Zustand `useUserStore` 统筹读写，依靠 React 响应式机制实现跨组件、跨页面的全自动 UI 水合 (Hydration)。
+
 ---
 
 ## 贰、 UI/UX 与样式架构规范 (Aesthetic & UI/UX Rules)

@@ -27,11 +27,7 @@ function App() {
       {/* 知识节点下钻页沿用 80/20 分栏布局 */}
       <Route
         path="/node/:nodeId"
-        element={(
-          <MainLayout>
-            <KnowledgeNode />
-          </MainLayout>
-        )}
+        element={<KnowledgeNode />}
       />
 
       {/* K2V 独立使用沉浸式布局，绝不进入分栏壳 */}

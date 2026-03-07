@@ -18,6 +18,7 @@ const Dashboard: FC = () => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isProfileComplete = useUserStore((s) => s.isProfileComplete);
   const isPretestComplete = useUserStore((s) => s.isPretestComplete);
+  const resetProfile = useUserStore((state) => state.resetProfile);
 
   // 拦截层 1：未登录
   if (!isAuthenticated) {
@@ -52,6 +53,26 @@ const Dashboard: FC = () => {
       <HeroSearch />
       <DailyPlanGrid />
       <FeatureMatrix />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px 0' }}>
+        <button
+          onClick={resetProfile}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '999px',
+            backgroundColor: 'transparent',
+            color: 'var(--color-warn-text, #D97706)',
+            border: '1px dashed var(--color-warn-text, #D97706)',
+            fontSize: '13px',
+            cursor: 'pointer',
+            opacity: 0.7,
+            transition: 'opacity 0.2s'
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.7')}
+        >
+          🔄 重新评估能力边界
+        </button>
+      </div>
     </div>
   );
 };

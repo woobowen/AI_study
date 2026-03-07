@@ -5,6 +5,9 @@ import ReactMarkdown from 'react-markdown';
 import { generateKnowledgeExplanation } from '../../api/goagents/knowledge';
 import { useUserStore } from '../../store/useUserStore';
 import type { KnowledgeExplanationResult, MindMap } from '../../api/goagents/types';
+import { NodeK2VBlock } from './components/NodeK2VBlock';
+import { Node3DBlock } from './components/Node3DBlock';
+import { NodeRightSidebar } from './components/NodeRightSidebar';
 
 const cardBaseStyle: CSSProperties = {
   borderRadius: '24px',
@@ -418,128 +421,11 @@ const KnowledgeNode: FC = () => {
           ) : null}
         </article>
 
-        <article
-          style={{
-            ...cardBaseStyle,
-            height: '400px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px',
-          }}
-        >
-          <h3 style={{ margin: 0 }}>视频降维</h3>
-          <div
-            style={{
-              width: '100%',
-              aspectRatio: '16/9',
-              borderRadius: '16px',
-              border: '1px solid var(--code-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxSizing: 'border-box',
-            }}
-          >
-            [16:9 假播放器占位框]
-          </div>
-        </article>
-
-        <article
-          style={{
-            ...cardBaseStyle,
-            height: '500px',
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '1px dashed var(--code-border)',
-          }}
-        >
-          <span
-            style={{
-              position: 'absolute',
-              top: '24px',
-              left: '24px',
-              padding: '8px 16px',
-              borderRadius: '9999px',
-              backgroundColor: 'var(--color-highlight-bg)',
-              color: 'var(--color-highlight-text, var(--text-primary))',
-              fontSize: '14px',
-              fontWeight: 700,
-            }}
-          >
-            [✨ 可交互]
-          </span>
-          <span>[3D WebGL 引擎占位区]</span>
-        </article>
+        {decodedNodeId && <NodeK2VBlock knowledgePoint={decodedNodeId} />}
+        {decodedNodeId && <Node3DBlock knowledgePoint={decodedNodeId} />}
       </section>
 
-      <aside
-        style={{
-          width: '20%',
-          minWidth: '340px',
-          height: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          borderLeft: '2px solid rgba(228, 200, 166, 0.15)',
-          backgroundColor: 'var(--bg-canvas)',
-          boxSizing: 'border-box',
-        }}
-      >
-        <div
-          style={{
-            height: '10%',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 24px',
-            boxSizing: 'border-box',
-          }}
-        >
-          <button
-            type="button"
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-primary)',
-              fontSize: '16px',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            [← 返回主页面]
-          </button>
-        </div>
-
-        <div
-          style={{
-            height: '20%',
-            padding: '24px',
-            borderBottom: '1px solid rgba(228, 200, 166, 0.2)',
-            boxSizing: 'border-box',
-          }}
-        >
-          <h3 style={{ margin: 0, marginBottom: '16px' }}>今日学习计划</h3>
-          <p
-            style={{
-              margin: 0,
-              color: 'var(--color-success-text, var(--text-primary))',
-              fontWeight: 700,
-            }}
-          >
-            [进度占位：已完成 3/4]
-          </p>
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            padding: '24px',
-            boxSizing: 'border-box',
-          }}
-        >
-          <p style={{ margin: 0 }}>[AI Chat 伴学舱占位]</p>
-        </div>
-      </aside>
+      <NodeRightSidebar />
     </div>
   );
 };
