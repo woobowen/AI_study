@@ -4,6 +4,7 @@ import ImmersiveLayout from './layouts/ImmersiveLayout';
 import Dashboard from './views/Dashboard';
 import C2V from './views/tools/C2V';
 import K2V from './views/tools/K2V';
+import Sandbox3D from './views/tools/Sandbox3D';
 
 /**
  * App 根组件
@@ -41,6 +42,8 @@ function App() {
           </ImmersiveLayout>
         )}
       />
+
+      <Route path="/tools/3d-sandbox" element={<Sandbox3D />} />
     </Routes>
   );
 }

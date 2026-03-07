@@ -12,7 +12,7 @@ export interface UserProfile {
   nickname: string;
   /** 年龄 */
   age: number;
-  /** 偏好语言，如 'zh-CN' | 'en-US' */
+  /** 编程偏好语言（如 'Python' | 'Go' | 'C++'） */
   language: string;
   /** 总学习周期（如：1天 / 3天 / 1周 / 1个月） */
   duration: string;

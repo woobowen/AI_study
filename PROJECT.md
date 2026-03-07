@@ -187,7 +187,24 @@
    - 强制样式：播放器容器必须显式挂载 `aspectRatio: '16/9'`、`backgroundColor: '#000000'`、`boxShadow: 'var(--shadow-soft)'`。
    - 禁止事项：严禁将 `<video>` 直接作为无容器裸元素渲染，避免宽高塌陷、比例失真与视觉层级失控。
 
-### 5. 知识节点沉浸页布局铁律 (Knowledge Node Immersive Layout Laws)
+### 5. 3D Sandbox 专属蓝图 (3D Embodied Sandbox Blueprint)
+1. **宏观骨架**
+   - 适用范围：`/tools/3d-sandbox`。
+   - 必须在路由层强制挂载 `ImmersiveLayout`（`100vw`），全面继承 K2V 的全屏沉浸布局与单输入流逻辑（仅输入知识点，撤销代码双轨）。
+2. **文案与 Props 契约**
+   - Hero Title 锁死为：`3D 模型沙盒`。
+   - 副标题锁死为：`你的专属具身认知交互库`。
+   - 搜索框 Placeholder 锁死为：`搜索已生成的 3D 交互模型...`。
+3. **3D 存量矩阵视觉铁律 (The 3D Gallery Grid)**
+   - **视觉暗示 (Affordance)**：卡片封面右上角或中央必须强制挂载“360°旋转”或“3D立方体”的矢量 Icon。
+   - **悬浮物理反馈 (Hover State)**：鼠标悬浮时，内部静态缩略图必须触发极其缓慢的 Y 轴自转动画（`transform: rotateY`），建立立体空间直觉。
+   - **挂载机制**：绝对禁止使用后端动态生成的 SSR `/viewer/:hash` 路由。前端在收到 SSE `complete` 事件的 `htmlSha256` 后，必须通过 Vite Proxy 直接请求静态物理资产，挂载路径锁死为 `<iframe src="/api/3d-sandbox/outputs/<hash>.html" />`。
+4. **AIGC 控制台规约 (Generator Console)**
+   - 恢复单输入框：`输入知识点描述`。
+   - 保留难度药丸：`[入门]`、`[中等]`、`[专精]`。
+   - CTA 按钮文案锁死为：`[✨ 渲染 3D 交互模型]`。
+
+### 6. 知识节点沉浸页布局铁律 (Knowledge Node Immersive Layout Laws)
 1. **宏观骨架 80/20 分治**
    - 适用范围：`/node/:nodeId`。
    - 左侧主脑区必须占据 `80%` 宽度，并允许纵向滚动，作为知识瀑布流主舞台。
@@ -276,6 +293,9 @@
     │   ├── mistakes.ts
     │   ├── favorites.ts
     │   └── types.ts
+    ├── sandbox3d/         # 3D 具身交互沙盒服务
+    │   ├── generate.ts    # 核心生成 API
+    │   └── types.ts       # 该领域的请求/响应类型定义
     └── _shared/           # 跨领域共享层（拦截器、基础请求封装、通用类型）
         ├── request.ts     # 统一的 fetch/axios 封装与拦截器
         └── types.ts       # 全局通用的 API 响应壳类型
@@ -300,6 +320,7 @@
   - `/api/v1`（User/Vault）-> `3000`
   - `/api/k2v` -> `8081`
   - `/api/c2v` -> `8082`
+  - `/api/3d-sandbox` -> `8083`（3D 具身交互后端，启动时强制注入 `PORT=8083` 避开 `3000` 端口撞车）
 * **GoAgents CORS 穿透实战铁律**: 已知 `goagents` 服务（默认端口 `8080`）物理缺失 CORS 中间件。前端绝对禁止直接向 `http://localhost:8080` 发起跨域请求；开发环境必须在 `vite.config.ts` 中配置代理（如将 `/api/goagents` rewrite 并 proxy 到 `http://localhost:8080`）完成跨域穿透。
 
 ### 3. 跨领域数据交互规约 (Cross-Domain Data Interaction)
@@ -321,6 +342,9 @@
    - C2V 与 K2V 必须共享同一套底层设计理念：补充画像摘要统一进入隔离字段 `extra_info`，严禁挤占或污染 Go 引擎的 `profile_text` 语义位。
    - C2V 与 K2V 的请求必须使用独立 `X-API-Key` 鉴权通道，由 API 层统一注入，页面层禁止手拼 Header。
    - C2V 与 K2V 路由入口必须挂载 `ImmersiveLayout` 的 16:9 沉浸视界，禁止回退到 Dashboard 80/20 分栏壳。
+4. **3D 沙盒异构适配器铁律 (3D Sandbox Adapter Doctrine)**
+   - 发往 3D 后端（`POST /api/3d-sandbox/api/generate`）的请求体必须经过 Adapter 转换，严禁 UI 层直接拼装或直发。
+   - 前端 Store 的通用画像必须被映射为后端期望的特定 `userProfile` 字段（如 `programmingLanguage`、`studyCycle`、`difficulty`），严禁直接透传全局 Store 状态。
 
 ### 4. K2V 微服务接入规约 (K2V Gateway & Auth Contract)
 1. **端口防撞与代理分流**
@@ -547,3 +571,15 @@
 - 知识图谱的节点点亮（即推入 `mastered_knowledge` 数组）必须满足极其苛刻的双重校验：
   - 学前测判定：`isMastered = (自信度 === '我会') && (答案 === 纯正正确)`。严禁将瞎蒙（我不确定+正确）计入掌握状态。
   - 学习期拓展：在知识点详情页，必须由用户显式触发“学习完毕”事件，方可派发图谱更新动作。每次掌握新节点，必须实时触发全栈画像的水合与更新。
+
+### 🎯 状态拓扑更新 (State Topology) - 2026-03-07
+* **3D 沙盒模块 (Sandbox3D)**：已进入“完全体”状态。脱离独立测试期，成功接入微服务级画像大动脉。具备实时响应 UI 动态难度 (`difficulty`)、持久化历史记录 (`localStorage`) 以及语义化封面生成的能力。
+* **学前测与动态知识图谱 (Pretest & Knowledge Graph)**：修复了数据截断萎缩 Bug。现已建立“前端作答 -> 底层知识点 (knowledge_point) 提取 -> Zustand 全局图谱注水 (`addMasteredNode`) -> 聚合为 profile_text -> Go 网关透传 -> LLM / 3D 引擎感知”的完美数据闭环。
+
+### 🔄 版本增量台账 (Delta Log) - 2026-03-07
+* **重构**：`generate.ts` 中的 `adaptSandbox3DPayload` 适配器。消除所有前端臆想字段与硬编码，严格映射 `useUserStore` 的真实画像字段（age, language, duration），并将学习补充与已掌握知识点精准缝合为 `learningGoal`。
+* **重构**：`PretestBoard/index.tsx` 中的 `normalizeQuestions` 函数。打破数据截断漏斗，强行穿透 `knowledge_point` 与 `correct_answer`，并在结算时激活基于前缀匹配的掌握度判定逻辑。
+* **修复**：纠正了 `useUserStore.ts` 中关于 `language` 字段的注释投毒（明确为编程语言而非界面语言）。
+* **贯通**：`Sandbox3D/index.tsx` 组件成功挂载 `useUserStore`，打通了“入门/中等/专精”的真实物理传参链路。
+
+---

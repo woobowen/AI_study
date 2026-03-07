@@ -5,4 +5,5 @@ export const API_PREFIX = {
   VAULT: '/api/v1',        // 修复：指向真正的 Rust 金库基础路由
   C2V: '/api/c2v',
   K2V: '/api/k2v',
+  SANDBOX3D: '/api/3d-sandbox',
 } as const;

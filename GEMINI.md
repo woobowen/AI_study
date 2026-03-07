@@ -43,6 +43,10 @@
 * 所有涉及间距 (margin, padding, gap, top/left) 和圆角 (border-radius) 的数值，**必须是 8 的倍数** (8, 16, 24, 32, 40, 48, 64等)。严禁生成 5px、10px、15px 等非标数值。
 * 代码展示区块强制绑定等宽字体集 (`Fira Code`, `JetBrains Mono`, `monospace`) 并挂载专属背景色 `--code-bg`。
 
+### 3. 3D 资产视觉微操红线 (3D Asset Interaction Red Lines)
+* **3D 卡片微拟态交互**: 涉及 3D 模型的展示卡片，必须使用 CSS `transform: rotateY` 实现 Hover 态的缓动自转，增强具身认知暗示。
+* **iframe 隔离铁律**: 生成挂载 3D 资产（如 `.html` 产物）的视图代码时，绝对禁止试图用 React 组件去解析 3D 源码。必须使用 `<iframe src="...">` 标签作为物理沙盒进行隔离加载，并且 `src` 必须指向 `public/mock_media/` 下的绝对路径直出。
+
 ---
 
 ## 叁、 Git 提交流程与原子化控制 (Git Protocol)
@@ -70,6 +74,11 @@
 7. **本地存储类型净化律 (Storage Sanitization)**: 从 `localStorage` 读取鉴权与引导状态时，严禁直接作为 Boolean 判定。必须显式拦截并清除字符串幽灵状态（`'null'`、`'undefined'`、`''`），统一在净化后再进行布尔推导，防止 `Boolean('undefined') === true` 导致伪阳性鉴权。
 8. **长连接状态机韧性 (Hypersensitive Circuit Breaker Defense)**: 在处理耗时极长（如30分钟以上）的 SSE 生成任务时，前端严禁对非致命事件（如 failed/error 发出的 503 重试警告）过度反应。绝对禁止在 onError/onFailed 回调中将 isGenerating 设为 false 或抛出 Error 切断 Fetch 流。只有在收到最终的 result 事件或外层 catch 捕获到真实的物理断网时，才允许释放 UI 锁定态。
 9. **异构引擎组装意识**: 在向后端发送 Payload 时，必须先判定目标引擎类型。若是 Go 引擎（GoAgents），画像字段必须扁平化映射为 `profile_text`；若是 Python 引擎（K2V/C2V），必须映射为 `extra_info`。严禁盲目复制组装逻辑。
+10. **后端 SSR 绕过法则 (SSR Bypass Doctrine)**: 当前端架构为纯 CSR (Vite/React) 时，若后端微服务（如 3D 引擎）提供了自带的 SSR 预览页面（如 `/viewer/:hash`），前端严禁将其直接嵌入。必须撕开包装，直接通过代理路径精准提取底层的静态物理产物（如 `/outputs/xxx.html`）进行 iframe 挂载，以维持前端 UI 容器的绝对控制权。
+11. **强类型异构载荷适配 (Heterogeneous Payload Adaptation)**: 在对接非原生生态的第三方/独立后端服务时，绝不允许“偷懒”把前端的全局 UserProfile 状态直接扔给 API。必须在 `src/api/` 层编写专用的 Adapter 函数，按照目标后端 `req.body` 的精确签名（如特异性的 `difficulty`, `learningGoal` 字段）进行字段重组和容错处理。
+### 🛑 跨端数据保真铁律 (Cross-Boundary Fidelity Protocol)
+* **反数据截断**：在进行前后端 API 对接或组件数据规范化 (Normalization) 时，严禁随意丢弃后端下发的高价值字段（如底层标签、知识点映射、溯源 ID）。必须确保核心业务逻辑字段安全穿透组件层。
+* **唯一真理源 (SSOT)**：所有涉及用户状态、偏好、历史轨迹的模块（如 3D 沙盒、学习计划），严禁在组件内部维护孤岛状态，必须且只能向全局 Store (`useUserStore`) 或底层数据库订阅/索取真理数据。
 
 ---
 

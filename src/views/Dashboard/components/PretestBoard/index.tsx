@@ -13,6 +13,8 @@ interface LocalQuestion {
   id: string;
   question: string;
   options: string[];
+  knowledge_point: string;
+  correct_answer: string;
 }
 
 const boardWrapStyle: React.CSSProperties = {
@@ -161,7 +163,6 @@ function normalizeQuestions(rawQuestions: unknown): LocalQuestion[] {
           return '';
         })
         .filter((item): item is string => Boolean(item));
-
       if (!question || options.length === 0) {
         return null;
       }
@@ -170,6 +171,14 @@ function normalizeQuestions(rawQuestions: unknown): LocalQuestion[] {
         id,
         question,
         options,
+        // 安全提取底层知识点和正确答案
+        knowledge_point:
+          typeof record.knowledge_point === 'string'
+            ? record.knowledge_point
+            : typeof record.tag === 'string'
+              ? record.tag
+              : '未分类知识点',
+        correct_answer: typeof record.answer === 'string' ? record.answer : '',
       };
     })
     .filter((item): item is LocalQuestion => Boolean(item));
@@ -249,13 +258,29 @@ const PretestBoard: FC = () => {
       .filter((q) => answers[q.id] && confidenceMap[q.id]);
 
     const base = toProfilePayload(userProfile);
-    const answerSummary = answeredQuestions
-      .map(
-        (item, idx) =>
-          `Q${idx + 1}: ${item.question}\n回答: ${answers[item.id]}\n置信度: ${confidenceMap[item.id]}`,
-      )
-      .join('\n\n');
-    const finalProfileText = [base.profile_text, '【学前测作答记录】', answerSummary].filter(Boolean).join('\n\n');
+    // 1. 过滤出真正“已掌握”的题目
+    // 判定铁律：用户明确表示“我会” 且 用户的作答选项与正确答案匹配（采用前缀匹配防止解析干扰）
+    const masteredQuestions = answeredQuestions.filter((q) => {
+      const isConfident = confidenceMap[q.id] === '我会';
+      const userAnswer = String(answers[q.id] || '').trim();
+      const isCorrect = q.correct_answer && userAnswer && q.correct_answer.startsWith(userAnswer);
+      return isConfident && isCorrect;
+    });
+
+    // 2. 提取底层知识点
+    const masteredPoints = masteredQuestions.map((q) => q.knowledge_point);
+
+    // 3. 激活全局知识图谱注水（核心防萎缩修复！）
+    const { addMasteredNode } = useUserStore.getState();
+    masteredPoints.forEach((kp) => addMasteredNode(kp));
+
+    // 4. 重塑最终的 Payload 文本
+    let finalProfileText = base.profile_text;
+    if (masteredPoints.length > 0) {
+      // 采用去重后的知识点进行组装
+      const uniquePoints = Array.from(new Set(masteredPoints));
+      finalProfileText = [base.profile_text, `【已掌握知识点】\n${uniquePoints.join(', ')}`].filter(Boolean).join('\n\n');
+    }
 
     const payload: StudyPlanRequestPayload = {
       age: base.age,
