@@ -139,12 +139,12 @@ const KnowledgeNode: FC = () => {
           width: 2,
         },
         label: {
-          color: 'var(--text-primary)',
+          color: '#2C1608',
           fontSize: 14,
-          backgroundColor: 'var(--bg-canvas)',
+          backgroundColor: '#FFFDF4',
           padding: [6, 12],
           borderRadius: 8,
-          borderColor: 'var(--code-border)',
+          borderColor: '#e4c8a6',
           borderWidth: 1,
           position: 'left',
           verticalAlign: 'middle',
@@ -416,18 +416,6 @@ const KnowledgeNode: FC = () => {
               )}
             </div>
           ) : null}
-          <div
-            style={{
-              marginTop: '24px',
-              padding: '16px',
-              borderRadius: '16px',
-              backgroundColor: 'var(--code-bg)',
-              fontFamily: "'Fira Code', 'JetBrains Mono', monospace",
-              border: '1px solid var(--code-border)',
-            }}
-          >
-            [代码占位区] function traverse(root) {'{'} ... {'}'}
-          </div>
         </article>
 
         <article

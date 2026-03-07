@@ -46,6 +46,9 @@
 ### 3. 3D 资产视觉微操红线 (3D Asset Interaction Red Lines)
 * **3D 卡片微拟态交互**: 涉及 3D 模型的展示卡片，必须使用 CSS `transform: rotateY` 实现 Hover 态的缓动自转，增强具身认知暗示。
 * **iframe 隔离铁律**: 生成挂载 3D 资产（如 `.html` 产物）的视图代码时，绝对禁止试图用 React 组件去解析 3D 源码。必须使用 `<iframe src="...">` 标签作为物理沙盒进行隔离加载，并且 `src` 必须指向 `public/mock_media/` 下的绝对路径直出。
+### 🛑 异构渲染引擎色值降维铁律 (Canvas/WebGL Color Protocol)
+* **CSS 变量隔离**：在标准 React DOM (HTML) 中，必须绝对使用 CSS 变量（如 `var(--bg-canvas)`）进行颜色映射。
+* **Canvas 降维打击**：但在涉及 ECharts (Canvas/SVG)、Three.js (WebGL) 等底层异构渲染引擎的配置对象（如 `option.series`）中，严禁使用 CSS 变量（极易导致渲染引擎解析失败并静默透明）。必须且只能通过常量映射或直接使用项目设计规范中约定的绝对 Hex 物理色值（如 `#2C1608`）。
 
 ---
 

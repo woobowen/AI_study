@@ -583,3 +583,14 @@
 * **贯通**：`Sandbox3D/index.tsx` 组件成功挂载 `useUserStore`，打通了“入门/中等/专精”的真实物理传参链路。
 
 ---
+
+### 🎯 状态拓扑更新 (State Topology) - 2026-03-07
+* **知识节点沉浸页 (KnowledgeNode)**：已完全打通。成功恢复 `/node/:nodeId` 路由分发。页面级状态机已跑通，成功挂载 `useUserStore` 全局画像，并完美对接 GoAgents 的 SSE 流式推流。
+* **GoAgents 微服务**：已在 Docker 容器级完成防幻觉 Prompt 与 UI 防爆破规则的无痛热更新与重铸，8080 端口物理链路稳定。
+
+### 🔄 版本增量台账 (Delta Log) - 2026-03-07
+* **贯通**：在 `App.tsx` 中补齐了丢失的 `<Route path="/node/:nodeId" />` 路由栈，唤醒了 18KB 的存量沉浸页代码。
+* **修复**：对 ECharts `getOption` 进行了极紫外级降维修复。由于 Canvas 引擎底层生命周期对 CSS 变量解析的不可靠性，强制将 `label.color` 等属性由 `var(--text-primary)` 替换为绝对物理 Hex 色值（如 `#2C1608`），彻底解决气泡文字丢失的 Bug。
+* **清理**：物理切除详情页早期遗留的硬编码 `[代码占位区]` JSX 骨架。
+
+---

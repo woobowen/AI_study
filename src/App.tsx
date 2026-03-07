@@ -5,6 +5,7 @@ import Dashboard from './views/Dashboard';
 import C2V from './views/tools/C2V';
 import K2V from './views/tools/K2V';
 import Sandbox3D from './views/tools/Sandbox3D';
+import KnowledgeNode from './views/KnowledgeNode';
 
 /**
  * App 根组件
@@ -19,6 +20,16 @@ function App() {
         element={(
           <MainLayout>
             <Dashboard />
+          </MainLayout>
+        )}
+      />
+
+      {/* 知识节点下钻页沿用 80/20 分栏布局 */}
+      <Route
+        path="/node/:nodeId"
+        element={(
+          <MainLayout>
+            <KnowledgeNode />
           </MainLayout>
         )}
       />
