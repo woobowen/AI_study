@@ -5,6 +5,13 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 // 用户画像类型定义
 // ========================
 
+export interface AIAssetInfo {
+  type: 'K2V' | 'C2V' | '3D';
+  title: string;
+  url: string;
+  createdAt: number;
+}
+
 /** 用户画像核心字段 */
 export interface UserProfile {
   /** 用户唯一标识 */
@@ -70,6 +77,9 @@ interface UserStoreActions {
   markKnowledgeMastered: (node: string) => void;
   /** 向动态知识图谱中追加已掌握节点（自动去重） */
   addMasteredNode: (node: string) => void;
+  startAITask: (taskId: string) => AbortSignal;
+  abortAITask: (taskId: string) => void;
+  finishAITask: (taskId: string, asset: AIAssetInfo) => void;
 }
 
 /** Store 顶层状态（画像之外的全局标记） */
@@ -88,6 +98,8 @@ interface UserStoreState {
   hasCompletedOnboarding: boolean;
   /** 动态知识追踪图谱：已掌握知识点列表 */
   mastered_knowledge: string[];
+  activeAITasks: Record<string, AbortController>;
+  aiAssets: Record<string, AIAssetInfo>;
 }
 
 /** 完整 Store 类型 = 状态 + 操作 */
@@ -123,6 +135,8 @@ export const useUserStore = create<UserStore>()(
       hasCompletedOnboarding: false, // 业务回滚：未完成新手引导
       studyPlan: null,               // 业务回滚：置空，等待生成
       mastered_knowledge: [],
+      activeAITasks: {},
+      aiAssets: {},
 
       /** 合并传入的部分字段到当前画像 */
       updateProfile: (patch) =>
@@ -198,10 +212,45 @@ export const useUserStore = create<UserStore>()(
             ? state.mastered_knowledge
             : [...state.mastered_knowledge, node],
         })),
+
+      startAITask: (taskId) => {
+        const controller = new AbortController();
+        set((state) => ({
+          activeAITasks: { ...state.activeAITasks, [taskId]: controller }
+        }));
+        return controller.signal;
+      },
+
+      abortAITask: (taskId) => {
+        set((state) => {
+          const currentTask = state.activeAITasks[taskId];
+          if (currentTask) {
+            currentTask.abort();
+          }
+          const newTasks = { ...state.activeAITasks };
+          delete newTasks[taskId];
+          return { activeAITasks: newTasks };
+        });
+      },
+
+      finishAITask: (taskId, asset) => {
+        set((state) => {
+          const newTasks = { ...state.activeAITasks };
+          delete newTasks[taskId];
+          return {
+            activeAITasks: newTasks,
+            aiAssets: { ...state.aiAssets, [taskId]: asset }
+          };
+        });
+      },
     }),
     {
       name: 'ai-study-user-storage',
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => {
+        const { activeAITasks, ...rest } = state;
+        return rest;
+      },
     }
   )
 );

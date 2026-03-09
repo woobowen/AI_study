@@ -279,7 +279,9 @@ const PretestBoard: FC = () => {
     if (masteredPoints.length > 0) {
       // 采用去重后的知识点进行组装
       const uniquePoints = Array.from(new Set(masteredPoints));
-      finalProfileText = [base.profile_text, `【已掌握知识点】\n${uniquePoints.join(', ')}`].filter(Boolean).join('\n\n');
+      const negativePrompt = `【已掌握知识点】\n${uniquePoints.join(', ')}\n\n⚠️ 系统级强制指令：\n用户已完全精通上述“已掌握知识点”。在生成专属学习路线时，请【绝对跳过】这些内容，严禁将其作为“复习”、“巩固”或任何新阶段的学习任务再次输出！请直接为用户规划后续的进阶与未知知识点。`;
+
+      finalProfileText = [base.profile_text, negativePrompt].filter(Boolean).join('\n\n');
     }
 
     const payload: StudyPlanRequestPayload = {

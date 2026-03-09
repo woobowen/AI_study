@@ -1,6 +1,5 @@
 import type { CSSProperties, FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStudyPlan } from '../../../store/useStudyPlan';
 import { useUserStore } from '../../../store/useUserStore';
 
 /** 网格容器：严格 4 列 + 180px 自动行高（项目架构红线） */
@@ -24,12 +23,11 @@ const cardBaseStyle: CSSProperties = {
  */
 const DailyPlanGrid: FC = () => {
   const navigate = useNavigate();
-  const planData = useStudyPlan((s) => s.planData);
-  const isLoading = useStudyPlan((s) => s.isLoading);
+  const studyPlan = useUserStore((state) => state.studyPlan);
   const masteredKnowledge = useUserStore((state) => state.mastered_knowledge) || [];
   const markKnowledgeMastered = useUserStore((state) => state.markKnowledgeMastered);
 
-  if (isLoading) {
+  if (!studyPlan || studyPlan.length === 0) {
     return (
       <section className="daily-plan-grid" style={gridStyle}>
         {/* 骨架卡片脉冲动画关键帧，仅在本组件作用域内使用 */}
@@ -80,10 +78,9 @@ const DailyPlanGrid: FC = () => {
     );
   }
 
-  if (planData?.stages && planData.stages.length > 0) {
-    return (
-      <section className="daily-plan-grid" style={gridStyle}>
-        {planData.stages.map((stage, index) => (
+  return (
+    <section className="daily-plan-grid" style={gridStyle}>
+      {studyPlan.map((stage, index) => (
           <article
             key={index}
             style={{
@@ -191,28 +188,7 @@ const DailyPlanGrid: FC = () => {
               )}
             </div>
           </article>
-        ))}
-      </section>
-    );
-  }
-
-  return (
-    <section className="daily-plan-grid" style={gridStyle}>
-      <div
-        style={{
-          ...cardBaseStyle,
-          gridColumn: '1 / -1',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 24,
-          color: 'var(--text-secondary, #7a6a5a)',
-          fontSize: 16,
-          fontWeight: 500,
-        }}
-      >
-        等待 AI 生成专属学习路线...
-      </div>
+      ))}
     </section>
   );
 };
